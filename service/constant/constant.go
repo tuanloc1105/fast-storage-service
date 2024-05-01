@@ -14,7 +14,7 @@ type ErrorEnums struct {
 	ErrorMessage string
 }
 
-const BaseApiPath = "/roommate/api/v1"
+const BaseApiPath = "/fast_storage/api/v1"
 
 const LogFileFolder = "./service_log/"
 const LogFileLocation = "room_mate_finance_service_log_%d_%d_%d.log"

@@ -10,14 +10,6 @@ type PageRequestBody struct {
 	Request PageRequestBodyValue `json:"request"`
 }
 
-type CalculateDebitRequestBodyValue struct {
-	IsStatisticsAccordingToCurrentUser bool `json:"isStatisticsAccordingToCurrentUser"`
-}
-
-type CalculateDebitRequestBody struct {
-	Request CalculateDebitRequestBodyValue `json:"request"`
-}
-
 type Response struct {
 	Trace        string `json:"trace"`
 	ErrorCode    int    `json:"errorCode"`

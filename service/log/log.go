@@ -11,7 +11,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func WithLevel(level constant.LogLevelType, ctx context.Context, content string) {
+func WithLevel(level constant.LogLevelType, ctx context.Context, content string, parameter ...any) {
 
 	// ensure that ctx is never nil
 	if ctx == nil {
@@ -36,12 +36,22 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string)
 		traceId = traceIdFromContext.(string)
 	}
 	// fmt.Println(strings.Compare(string(level), string(constant.LogLevelType("INFO"))))
-	var message = fmt.Sprintf(
-		constant.LogPattern,
-		traceId,
-		username,
-		content,
-	)
+	var message string
+	if len(parameter) < 1 {
+		message = fmt.Sprintf(
+			constant.LogPattern,
+			traceId,
+			username,
+			content,
+		)
+	} else {
+		message = fmt.Sprintf(
+			constant.LogPattern,
+			traceId,
+			username,
+			fmt.Sprintf(content, parameter...),
+		)
+	}
 	switch level {
 	case constant.Info:
 		log.Info(
