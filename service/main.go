@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fast-storage-go-service/config"
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/controller"
 	"fast-storage-go-service/log"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
@@ -39,6 +42,17 @@ func main() {
 			)
 		},
 	)
+
+	db, err := config.InitDatabaseConnection()
+	if err != nil {
+		panic(err)
+	}
+
+	controller.AuthenticateController(router, db)
+
+	if isKeycloakInfoSet := config.CheckKeycloakInfo(); !isKeycloakInfoSet {
+		panic(errors.New("keycloak is required to run this application"))
+	}
 
 	applicationPort := os.Getenv("APPLICATION_PORT")
 	if applicationPort == "" {
