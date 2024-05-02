@@ -107,12 +107,42 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 			)
 			return
 		}
+		realmAccessResponse := payload.RealmAccessResponse{
+			Roles: userInfoResult.RealmAccess.Roles,
+		}
+		resourceAccessResponse := payload.ResourceAccessResponse{
+			MasterRealm: payload.RealmAccessResponse(userInfoResult.ResourceAccess.MasterRealm),
+			Account:     payload.RealmAccessResponse(userInfoResult.ResourceAccess.Account),
+		}
+		res := payload.OpenidConnectTokenIntrospectResponse{
+			Exp:               userInfoResult.Exp,
+			Iat:               userInfoResult.Iat,
+			Jti:               userInfoResult.Jti,
+			Iss:               userInfoResult.Iss,
+			Aud:               userInfoResult.Aud,
+			Sub:               userInfoResult.Sub,
+			Typ:               userInfoResult.Typ,
+			Azp:               userInfoResult.Azp,
+			SessionState:      userInfoResult.SessionState,
+			ACR:               userInfoResult.ACR,
+			AllowedOrigins:    userInfoResult.AllowedOrigins,
+			RealmAccess:       realmAccessResponse,
+			ResourceAccess:    resourceAccessResponse,
+			Scope:             userInfoResult.Scope,
+			Sid:               userInfoResult.Sid,
+			EmailVerified:     userInfoResult.EmailVerified,
+			PreferredUsername: userInfoResult.PreferredUsername,
+			ClientID:          userInfoResult.ClientID,
+			Username:          userInfoResult.Username,
+			TokenType:         userInfoResult.TokenType,
+			Active:            userInfoResult.Active,
+		}
 		c.JSON(
 			http.StatusOK,
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				userInfoResult,
+				res,
 			),
 		)
 	}

@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Permission struct {
@@ -65,7 +64,7 @@ func RequestLogger(c *gin.Context) {
 	}
 
 	message := fmt.Sprintf(
-		"Request info:\n\t- header: %s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
+		"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
 		headerString,
 		c.Request.RequestURI,
 		c.Request.Method,
@@ -75,8 +74,8 @@ func RequestLogger(c *gin.Context) {
 	currentUser := "unknown"
 	claimFromGinContext, _ := c.Get("auth")
 	if claimFromGinContext != nil {
-		claims := claimFromGinContext.(jwt.MapClaims)
-		currentUser = claims["sub"].(string)
+		claims := claimFromGinContext.(TokenInformation)
+		currentUser = claims.PreferredUsername
 	}
 	var ctx = context.Background()
 	ctx = context.WithValue(ctx, constant.UsernameLogKey, currentUser)
@@ -119,7 +118,7 @@ func ResponseLogger(c *gin.Context) {
 
 	statusCode := c.Writer.Status()
 	message := fmt.Sprintf(
-		"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header: %s\n\t- payload:\n\t%s",
+		"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- payload:\n\t%s",
 		strconv.Itoa(statusCode),
 		c.Request.Method,
 		c.Request.RequestURI,
@@ -129,8 +128,8 @@ func ResponseLogger(c *gin.Context) {
 	currentUser := "unknown"
 	claimFromGinContext, _ := c.Get("auth")
 	if claimFromGinContext != nil {
-		claims := claimFromGinContext.(jwt.MapClaims)
-		currentUser = claims["sub"].(string)
+		claims := claimFromGinContext.(TokenInformation)
+		currentUser = claims.PreferredUsername
 	}
 	var ctx = context.Background()
 	ctx = context.WithValue(ctx, constant.UsernameLogKey, currentUser)
@@ -150,7 +149,7 @@ func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
 		ctx := context.Background()
 		ctx = context.WithValue(ctx, constant.TraceIdLogKey, traceId)
 		token := c.Request.Header.Get("Authorization")
-		var mapClaims jwt.MapClaims
+		var mapClaims TokenInformation
 		var verifyJwtTokenError error
 		if strings.Contains(token, "Bearer") {
 			mapClaims, verifyJwtTokenError = VerifyJwtToken(ctx, token[7:])
@@ -165,7 +164,7 @@ func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
 			})
 			return
 		}
-		currentUsername := mapClaims["sub"].(string)
+		currentUsername := mapClaims.PreferredUsername
 		ctx = context.WithValue(ctx, constant.UsernameLogKey, currentUsername)
 		c.Set("auth", mapClaims)
 		log.WithLevel(
@@ -177,20 +176,19 @@ func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
 			c.Next()
 			return
 		}
-		userRolesFromAccessToken := mapClaims["aud"]
+		userRolesFromAccessToken := mapClaims.RealmAccess.Roles
 		if userRolesFromAccessToken != nil {
-			roleListInterface := userRolesFromAccessToken.([]interface{})
 			log.WithLevel(
 				constant.Info,
 				ctx,
 				fmt.Sprintf(
 					"\n\t- this user has role: %v\n\t- current api require user with role: %v",
-					roleListInterface,
+					userRolesFromAccessToken,
 					listOfRole,
 				),
 			)
-			for _, roleListInterfaceElement := range roleListInterface {
-				if slices.Contains(listOfRole, fmt.Sprintf("%v", roleListInterfaceElement)) {
+			for _, roleElement := range userRolesFromAccessToken {
+				if slices.Contains(listOfRole, fmt.Sprintf("%v", roleElement)) {
 					c.Next()
 					return
 				}

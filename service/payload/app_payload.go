@@ -24,27 +24,27 @@ type ProtocolOpenidConnectTokenResponse struct {
 }
 
 type OpenidConnectTokenIntrospectResponse struct {
-	Exp               int64          `json:"exp"`
-	Iat               int64          `json:"iat"`
-	Jti               string         `json:"jti"`
-	Iss               string         `json:"iss"`
-	Aud               []string       `json:"aud"`
-	Sub               string         `json:"sub"`
-	Typ               string         `json:"typ"`
-	Azp               string         `json:"azp"`
-	SessionState      string         `json:"sessionState"`
-	ACR               string         `json:"acr"`
-	AllowedOrigins    []string       `json:"allowedOrigins"`
-	RealmAccess       RealmAccess    `json:"realmAccess"`
-	ResourceAccess    ResourceAccess `json:"resourceAccess"`
-	Scope             string         `json:"scope"`
-	Sid               string         `json:"sid"`
-	EmailVerified     bool           `json:"emailVerified"`
-	PreferredUsername string         `json:"preferredUsername"`
-	ClientID          string         `json:"clientId"`
-	Username          string         `json:"username"`
-	TokenType         string         `json:"tokenType"`
-	Active            bool           `json:"active"`
+	Exp               int64                  `json:"exp"`
+	Iat               int64                  `json:"iat"`
+	Jti               string                 `json:"jti"`
+	Iss               string                 `json:"iss"`
+	Aud               []string               `json:"aud"`
+	Sub               string                 `json:"sub"`
+	Typ               string                 `json:"typ"`
+	Azp               string                 `json:"azp"`
+	SessionState      string                 `json:"sessionState"`
+	ACR               string                 `json:"acr"`
+	AllowedOrigins    []string               `json:"allowedOrigins"`
+	RealmAccess       RealmAccessResponse    `json:"realmAccess"`
+	ResourceAccess    ResourceAccessResponse `json:"resourceAccess"`
+	Scope             string                 `json:"scope"`
+	Sid               string                 `json:"sid"`
+	EmailVerified     bool                   `json:"emailVerified"`
+	PreferredUsername string                 `json:"preferredUsername"`
+	ClientID          string                 `json:"clientId"`
+	Username          string                 `json:"username"`
+	TokenType         string                 `json:"tokenType"`
+	Active            bool                   `json:"active"`
 }
 
 type RealmAccessResponse struct {
@@ -52,6 +52,6 @@ type RealmAccessResponse struct {
 }
 
 type ResourceAccessResponse struct {
-	MasterRealm RealmAccess `json:"masterRealm"`
-	Account     RealmAccess `json:"account"`
+	MasterRealm RealmAccessResponse `json:"masterRealm"`
+	Account     RealmAccessResponse `json:"account"`
 }

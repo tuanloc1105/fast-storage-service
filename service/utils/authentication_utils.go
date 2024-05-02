@@ -5,15 +5,41 @@ import (
 	"errors"
 	"fast-storage-go-service/constant"
 	"fmt"
-	"os"
-	"strconv"
-	"time"
+	"strings"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type TokenInformation struct {
+	Exp               int64          `json:"exp"`
+	Iat               int64          `json:"iat"`
+	Jti               string         `json:"jti"`
+	Iss               string         `json:"iss"`
+	Aud               []string       `json:"aud"`
+	Sub               string         `json:"sub"`
+	Typ               string         `json:"typ"`
+	Azp               string         `json:"azp"`
+	SessionState      string         `json:"session_state"`
+	ACR               string         `json:"acr"`
+	AllowedOrigins    []string       `json:"allowed-origins"`
+	RealmAccess       RealmAccess    `json:"realm_access"`
+	ResourceAccess    ResourceAccess `json:"resource_access"`
+	Scope             string         `json:"scope"`
+	Sid               string         `json:"sid"`
+	EmailVerified     bool           `json:"email_verified"`
+	PreferredUsername string         `json:"preferred_username"`
+}
+
+type RealmAccess struct {
+	Roles []string `json:"roles"`
+}
+
+type ResourceAccess struct {
+	MasterRealm RealmAccess `json:"master-realm"`
+	Account     RealmAccess `json:"account"`
+}
 
 func EncryptPassword(password string) (encryptedPassword string, error error) {
 	encryptedPassword = ""
@@ -37,39 +63,23 @@ func EncryptPasswordPointer(password *string) (error error) {
 	return error
 }
 
-func GenerateJwtToken(username string, role ...string) string {
+func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error) {
+	result := TokenInformation{}
 
-	secretKey := os.Getenv("JWT_SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "Q8OzIHRo4buDIGfhu41pIGFuaCBsw6AgxJHhurlwIHRyYWkgbmjhuqV0IFZp4buHdCBOYW0"
+	tokenArray := strings.Split(token, ".")
+
+	if len(tokenArray) < 3 {
+		return result, errors.New("invalid token")
 	}
 
-	tokenExpireTime := os.Getenv("JWT_EXPIRE_TIME")
-	if tokenExpireTime == "" {
-		tokenExpireTime = "10"
+	tokenBody := tokenArray[1] + "="
+
+	tokenOut, _, tokenError := Shellout(ctx, fmt.Sprintf("echo '%s' | base64 -d", tokenBody))
+
+	if tokenError != nil {
+		return result, nil
 	}
 
-	expireTime, err := strconv.Atoi(tokenExpireTime)
-
-	if err != nil {
-		panic(err)
-	}
-
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": username,                                                       // Subject (user identifier)
-		"iss": "fast-storage-go-service",                                      // Issuer
-		"aud": role,                                                           // Audience (user role)
-		"exp": time.Now().Add(time.Duration(expireTime) * time.Minute).Unix(), // Expiration time
-		"iat": time.Now().Unix(),                                              // Issued at
-	})
-	tokenString, signedStringError := claims.SignedString([]byte(secretKey))
-	if signedStringError != nil {
-		panic(signedStringError)
-	}
-	return tokenString
-}
-
-func VerifyJwtToken(ctx context.Context, token string) (jwt.MapClaims, error) {
 	usernameFromContext := ctx.Value(constant.UsernameLogKey)
 	traceIdFromContext := ctx.Value(constant.TraceIdLogKey)
 	username := ""
@@ -81,31 +91,21 @@ func VerifyJwtToken(ctx context.Context, token string) (jwt.MapClaims, error) {
 		traceId = traceIdFromContext.(string)
 	}
 
-	secretKey := os.Getenv("JWT_SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "Q8OzIHRo4buDIGfhu41pIGFuaCBsw6AgxJHhurlwIHRyYWkgbmjhuqV0IFZp4buHdCBOYW0"
-	}
+	JsonToStruct(tokenOut, &result)
 
-	parsedToken, tokenParseError := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secretKey), nil
-	})
-	if tokenParseError != nil {
+	if result.Jti == "" {
 		log.Error(
 			fmt.Sprintf(
 				constant.LogPattern,
 				traceId,
 				username,
-				tokenParseError.Error(),
+				"can not parse token",
 			),
 		)
-		return nil, tokenParseError
+		return result, errors.New("can not parse token")
 	}
 
-	if !parsedToken.Valid {
-		return nil, errors.New("token invalid")
-	}
-
-	return parsedToken.Claims.(jwt.MapClaims), tokenParseError
+	return result, nil
 }
 
 func ComparePassword(inputPassword string, hashedPassword string) error {
@@ -122,9 +122,9 @@ func GetCurrentUsername(c *gin.Context) (username *string, err error) {
 		return &emptyString, errors.New("can not get current username")
 	}
 
-	claim := currentUser.(jwt.MapClaims)
+	claim := currentUser.(TokenInformation)
 
-	currentUsername := claim["sub"].(string)
+	currentUsername := claim.PreferredUsername
 
 	return &currentUsername, nil
 }
