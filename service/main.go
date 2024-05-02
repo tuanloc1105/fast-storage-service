@@ -10,7 +10,6 @@ import (
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -54,10 +53,7 @@ func main() {
 		panic(errors.New("keycloak is required to run this application"))
 	}
 
-	applicationPort := os.Getenv("APPLICATION_PORT")
-	if applicationPort == "" {
-		applicationPort = "8080"
-	}
+	applicationPort := "8080"
 
 	router.GET(constant.BaseApiPath+"/", func(ctx *gin.Context) {
 		ctx.Data(

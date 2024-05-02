@@ -241,31 +241,16 @@ func ReturnPageResponse(
 	}
 }
 
-// func readPermissionJsonFile() *[]Permission {
-// 	var result []Permission
-// 	filePath := filepath.Join(GetCurrentDirectory(), "permission.json")
-// 	// log.Printf(filePath)
-// 	jsonFile, err := os.Open(filePath)
-// 	if err != nil {
-// 		// log.Printf(err.Error())
-// 		return &result
-// 	}
-
-// 	defer func(jsonFile *os.File) {
-// 		deferErr := jsonFile.Close()
-// 		if deferErr != nil {
-// 			// log.Printf(deferErr.Error())
-// 			panic(deferErr)
-// 		}
-// 	}(jsonFile)
-// 	byteValue, readAllErr := io.ReadAll(jsonFile)
-// 	if readAllErr != nil {
-// 		// log.Printf(readAllErr.Error())
-// 		return &result
-// 	}
-// 	// log.Printf(string(byteValue))
-// 	ByteJsonToStruct(byteValue, &result)
-
-// 	return &result
-
-// }
+func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) {
+	if err := c.ShouldBindJSON(requestPayload); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			ReturnResponse(
+				c,
+				constant.JsonBindingError,
+				nil,
+				err.Error(),
+			),
+		)
+	}
+}

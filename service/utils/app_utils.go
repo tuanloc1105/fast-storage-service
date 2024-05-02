@@ -1,8 +1,14 @@
 package utils
 
 import (
+	"bytes"
+	"context"
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/log"
+	"fmt"
 	"math/big"
+	"os/exec"
+	"runtime"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,4 +39,49 @@ func RoundHalfUpBigFloat(input *big.Float) {
 
 func GetPointerOfAnyValue[T any](a T) *T {
 	return &a
+}
+
+func Shellout(ctx context.Context, command string) (string, string, error) {
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		"Start to executing command: %s",
+		command,
+	)
+	var cmd *exec.Cmd
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("bash", "-c", command)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", command)
+	default:
+		log.WithLevel(
+			constant.Error,
+			ctx,
+			"%s not implemented",
+			runtime.GOOS,
+		)
+		return "", "", fmt.Errorf("%s not implemented", runtime.GOOS)
+	}
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	cmd.ProcessState.ExitCode()
+	stdoutString := stdout.String()
+	stderrString := stderr.String()
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		"--- stdout ---\n%s",
+		stdoutString,
+	)
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		"--- stderr ---\n%s",
+		stderrString,
+	)
+	return stdoutString, stderrString, err
 }
