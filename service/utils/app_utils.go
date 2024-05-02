@@ -68,9 +68,15 @@ func Shellout(ctx context.Context, command string) (string, string, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
-	cmd.ProcessState.ExitCode()
+	exitCode := cmd.ProcessState.ExitCode()
 	stdoutString := stdout.String()
 	stderrString := stderr.String()
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		"--- command exit status ---\n%d",
+		exitCode,
+	)
 	log.WithLevel(
 		constant.Info,
 		ctx,

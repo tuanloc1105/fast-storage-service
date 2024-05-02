@@ -63,3 +63,44 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 		)
 	}
 }
+
+func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c, true)
+
+	if !isSuccess {
+		return
+	}
+
+	if userInfoResult, userInfoError := keycloak.KeycloakGetUserInfo(ctx, c.GetHeader("Authorization")[7:]); userInfoError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			utils.ReturnResponse(
+				c,
+				constant.AuthenticateFailure,
+				nil,
+				userInfoError.Error(),
+			),
+		)
+	} else {
+		if userInfoResult.ID == "" {
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				utils.ReturnResponse(
+					c,
+					constant.Unauthorized,
+					nil,
+				),
+			)
+			return
+		}
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				userInfoResult,
+			),
+		)
+	}
+}
