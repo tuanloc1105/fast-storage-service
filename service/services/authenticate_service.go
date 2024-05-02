@@ -53,12 +53,25 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 			)
 			return
 		}
+		res := payload.ProtocolOpenidConnectTokenResponse{
+			AccessToken:      loginResult.AccessToken,
+			ExpiresIn:        loginResult.ExpiresIn,
+			RefreshExpiresIn: loginResult.RefreshExpiresIn,
+			RefreshToken:     loginResult.RefreshToken,
+			TokenType:        loginResult.TokenType,
+			IDToken:          loginResult.IDToken,
+			NotBeforePolicy:  loginResult.NotBeforePolicy,
+			SessionState:     loginResult.SessionState,
+			Scope:            loginResult.Scope,
+			Error:            loginResult.Error,
+			ErrorDescription: loginResult.ErrorDescription,
+		}
 		c.JSON(
 			http.StatusOK,
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				loginResult,
+				res,
 			),
 		)
 	}
