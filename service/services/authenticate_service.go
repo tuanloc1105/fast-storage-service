@@ -83,7 +83,7 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 			),
 		)
 	} else {
-		if userInfoResult.ID == "" {
+		if !userInfoResult.Active {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				utils.ReturnResponse(

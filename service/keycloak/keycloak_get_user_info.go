@@ -10,22 +10,21 @@ import (
 	"fmt"
 )
 
-func KeycloakGetUserInfo(ctx context.Context, token string) (payload.RealmsUsersInfoElement, error) {
+func KeycloakGetUserInfo(ctx context.Context, token string) (payload.OpenidConnectTokenIntrospect, error) {
 	getUserInfoCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s/admin/realms/master/users/' --header 'Authorization: Bearer %s'",
+		"curl -k --location '%s/realms/master/protocol/openid-connect/token/introspect' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
 		config.KeycloakApiUrl,
+		config.KeycloakClientId,
+		config.KeycloakClientSecret,
 		token,
 	)
-	result := []payload.RealmsUsersInfoElement{}
+	result := payload.OpenidConnectTokenIntrospect{}
 	shellStdout, _, shellError := utils.Shellout(ctx, getUserInfoCurlCommand)
 	if shellError != nil {
 		log.WithLevel(constant.Info, ctx, "an error has been occurred: %s", shellError.Error())
-		return payload.RealmsUsersInfoElement{}, shellError
+		return result, shellError
 	}
 
 	utils.JsonToStruct(shellStdout, &result)
-	if len(result) < 1 {
-		return payload.RealmsUsersInfoElement{}, nil
-	}
-	return result[0], nil
+	return result, nil
 }

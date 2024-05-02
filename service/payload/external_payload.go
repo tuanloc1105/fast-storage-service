@@ -14,23 +14,35 @@ type ProtocolOpenidConnectToken struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-type RealmsUsersInfoElement struct {
-	ID               string `json:"id"`
-	Username         string `json:"username"`
-	FirstName        string `json:"firstName"`
-	LastName         string `json:"lastName"`
-	EmailVerified    bool   `json:"emailVerified"`
-	CreatedTimestamp int64  `json:"createdTimestamp"`
-	Enabled          bool   `json:"enabled"`
-	Totp             bool   `json:"totp"`
-	NotBefore        int64  `json:"notBefore"`
-	Access           Access `json:"access"`
+type OpenidConnectTokenIntrospect struct {
+	Exp               int64          `json:"exp"`
+	Iat               int64          `json:"iat"`
+	Jti               string         `json:"jti"`
+	Iss               string         `json:"iss"`
+	Aud               []string       `json:"aud"`
+	Sub               string         `json:"sub"`
+	Typ               string         `json:"typ"`
+	Azp               string         `json:"azp"`
+	SessionState      string         `json:"session_state"`
+	ACR               string         `json:"acr"`
+	AllowedOrigins    []string       `json:"allowed-origins"`
+	RealmAccess       RealmAccess    `json:"realm_access"`
+	ResourceAccess    ResourceAccess `json:"resource_access"`
+	Scope             string         `json:"scope"`
+	Sid               string         `json:"sid"`
+	EmailVerified     bool           `json:"email_verified"`
+	PreferredUsername string         `json:"preferred_username"`
+	ClientID          string         `json:"client_id"`
+	Username          string         `json:"username"`
+	TokenType         string         `json:"token_type"`
+	Active            bool           `json:"active"`
 }
 
-type Access struct {
-	ManageGroupMembership bool `json:"manageGroupMembership"`
-	View                  bool `json:"view"`
-	MapRoles              bool `json:"mapRoles"`
-	Impersonate           bool `json:"impersonate"`
-	Manage                bool `json:"manage"`
+type RealmAccess struct {
+	Roles []string `json:"roles"`
+}
+
+type ResourceAccess struct {
+	MasterRealm RealmAccess `json:"master-realm"`
+	Account     RealmAccess `json:"account"`
 }
