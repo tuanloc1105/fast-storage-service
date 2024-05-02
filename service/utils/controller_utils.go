@@ -239,7 +239,7 @@ func ReturnPageResponse(
 	}
 }
 
-func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) {
+func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) bool {
 	if err := c.ShouldBindJSON(requestPayload); err != nil {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
@@ -250,5 +250,7 @@ func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) {
 				err.Error(),
 			),
 		)
+		return false
 	}
+	return true
 }

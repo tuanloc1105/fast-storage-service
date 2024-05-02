@@ -29,7 +29,10 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 	}
 
 	requestPayload := payload.LoginRequestBody{}
-	utils.ReadGinContextToPayload(c, &requestPayload)
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
 
 	if loginResult, loginError := keycloak.KeycloakLogin(ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
 		c.AbortWithStatusJSON(
