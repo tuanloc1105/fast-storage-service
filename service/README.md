@@ -13,6 +13,7 @@ env info:
     "KEYCLOAK_CLIENT_SECRET": "Wog91caQCn39MZwgRH9TxM9MZ0oqu4GG",
     "KEYCLOAK_API_URL": "https://localhost:8443",
     "KEYCLOAK_ADMIN_USERNAME": "admin",
-    "KEYCLOAK_ADMIN_PASSWORD": "admin"
+    "KEYCLOAK_ADMIN_PASSWORD": "admin",
+    "ACCOUNT_ACTIVE_HOST": "http://localhost:8080"
 }
 ```

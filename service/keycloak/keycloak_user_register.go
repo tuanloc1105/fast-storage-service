@@ -9,6 +9,7 @@ import (
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -94,6 +95,15 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 			if keycloakCommonError.ErrorMessage != "" {
 				return errors.New(keycloakCommonError.ErrorMessage)
 			}
+
+			activeHost, activeHostSet := os.LookupEnv("ACCOUNT_ACTIVE_HOST")
+
+			if !activeHostSet {
+				activeHost = "http://localhost:8080"
+			}
+
+			activeLink := fmt.Sprintf("%s/fast_storage/api/v1/auth/active_account?userId=%s&username=%s", activeHost, userSearchingResult[0].ID, userSearchingResult[0].Username)
+			log.WithLevel(constant.Info, ctx, "active link for user: %s", activeLink)
 		}
 
 		return nil
