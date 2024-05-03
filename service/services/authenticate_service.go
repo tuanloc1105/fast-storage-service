@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/keycloak"
 	"fast-storage-go-service/payload"
@@ -17,16 +18,17 @@ const (
 )
 
 type AuthenticateHandler struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	Ctx context.Context
 }
 
 func (h *AuthenticateHandler) Login(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c, true)
-
 	if !isSuccess {
 		return
 	}
+	h.Ctx = ctx
 
 	requestPayload := payload.LoginRequestBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
@@ -34,7 +36,7 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 		return
 	}
 
-	if loginResult, loginError := keycloak.KeycloakLogin(ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
+	if loginResult, loginError := keycloak.KeycloakLogin(h.Ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusUnauthorized,
 			utils.ReturnResponse(
@@ -83,12 +85,12 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c, true)
-
 	if !isSuccess {
 		return
 	}
+	h.Ctx = ctx
 
-	if userInfoResult, userInfoError := keycloak.KeycloakGetUserInfo(ctx, c.GetHeader("Authorization")[7:]); userInfoError != nil {
+	if userInfoResult, userInfoError := keycloak.KeycloakGetUserInfo(h.Ctx, c.GetHeader("Authorization")[7:]); userInfoError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusUnauthorized,
 			utils.ReturnResponse(
@@ -139,6 +141,66 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 			Username:          userInfoResult.Username,
 			TokenType:         userInfoResult.TokenType,
 			Active:            userInfoResult.Active,
+		}
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				res,
+			),
+		)
+	}
+}
+
+func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c, true)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	requestPayload := payload.GetNewTokenBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if getNewTokenResult, getNewTokenError := keycloak.KeycloakGetNewToken(h.Ctx, requestPayload.Request.RefreshToken); getNewTokenError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			utils.ReturnResponse(
+				c,
+				constant.AuthenticateFailure,
+				nil,
+				getNewTokenError.Error(),
+			),
+		)
+	} else {
+		if getNewTokenResult.Error != "" {
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				utils.ReturnResponse(
+					c,
+					constant.AuthenticateFailure,
+					getNewTokenResult,
+				),
+			)
+			return
+		}
+		res := payload.ProtocolOpenidConnectTokenResponse{
+			AccessToken:      getNewTokenResult.AccessToken,
+			ExpiresIn:        getNewTokenResult.ExpiresIn,
+			RefreshExpiresIn: getNewTokenResult.RefreshExpiresIn,
+			RefreshToken:     getNewTokenResult.RefreshToken,
+			TokenType:        getNewTokenResult.TokenType,
+			IDToken:          getNewTokenResult.IDToken,
+			NotBeforePolicy:  getNewTokenResult.NotBeforePolicy,
+			SessionState:     getNewTokenResult.SessionState,
+			Scope:            getNewTokenResult.Scope,
+			Error:            getNewTokenResult.Error,
+			ErrorDescription: getNewTokenResult.ErrorDescription,
 		}
 		c.JSON(
 			http.StatusOK,

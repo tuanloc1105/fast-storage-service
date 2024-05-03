@@ -9,6 +9,14 @@ type LoginRequestBody struct {
 	Request LoginRequestBodyValue `json:"request"`
 }
 
+type GetNewTokenBodyValue struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
+type GetNewTokenBody struct {
+	Request GetNewTokenBodyValue `json:"request"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`

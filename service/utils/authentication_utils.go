@@ -6,6 +6,7 @@ import (
 	"fast-storage-go-service/constant"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/log"
 	"github.com/gin-gonic/gin"
@@ -72,12 +73,12 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 		return result, errors.New("invalid token")
 	}
 
-	tokenBody := tokenArray[1] + "="
+	tokenBody := tokenArray[1] // + "="
 
 	tokenOut, _, tokenError := Shellout(ctx, fmt.Sprintf("echo '%s' | base64 -d", tokenBody))
 
-	if tokenError != nil {
-		return result, nil
+	if tokenError != nil && tokenOut == "" {
+		return result, tokenError
 	}
 
 	usernameFromContext := ctx.Value(constant.UsernameLogKey)
@@ -103,6 +104,14 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 			),
 		)
 		return result, errors.New("can not parse token")
+	}
+
+	// validate if token is expired
+
+	currentTimeUnix := time.Now().Unix()
+
+	if result.Exp < currentTimeUnix {
+		return result, errors.New("token expired")
 	}
 
 	return result, nil

@@ -157,10 +157,16 @@ func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
 			mapClaims, verifyJwtTokenError = VerifyJwtToken(ctx, token)
 		}
 		if verifyJwtTokenError != nil {
+			log.WithLevel(
+				constant.Error,
+				ctx,
+				"token invalid: %s",
+				verifyJwtTokenError.Error(),
+			)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, &payload.Response{
 				Trace:        traceId,
 				ErrorCode:    constant.Unauthorized.ErrorCode,
-				ErrorMessage: constant.Unauthorized.ErrorMessage,
+				ErrorMessage: constant.Unauthorized.ErrorMessage + ". " + verifyJwtTokenError.Error(),
 			})
 			return
 		}
