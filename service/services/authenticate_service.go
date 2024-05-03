@@ -58,13 +58,13 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 			)
 			return
 		}
-		res := payload.ProtocolOpenidConnectTokenResponse(loginResult)
+		protocolOpenidConnectTokenResponse := payload.ProtocolOpenidConnectTokenResponse(loginResult)
 		c.JSON(
 			http.StatusOK,
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				res,
+				protocolOpenidConnectTokenResponse,
 			),
 		)
 	}
@@ -72,7 +72,7 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 
 func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 
-	ctx, isSuccess := utils.PrepareContext(c, true)
+	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
 		return
 	}
@@ -107,7 +107,7 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 			MasterRealm: payload.RealmAccessResponse(userInfoResult.ResourceAccess.MasterRealm),
 			Account:     payload.RealmAccessResponse(userInfoResult.ResourceAccess.Account),
 		}
-		res := payload.OpenidConnectTokenIntrospectResponse{
+		openidConnectTokenIntrospectResponse := payload.OpenidConnectTokenIntrospectResponse{
 			Exp:               userInfoResult.Exp,
 			Iat:               userInfoResult.Iat,
 			Jti:               userInfoResult.Jti,
@@ -135,7 +135,7 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				res,
+				openidConnectTokenIntrospectResponse,
 			),
 		)
 	}
@@ -143,7 +143,7 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 
 func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
 
-	ctx, isSuccess := utils.PrepareContext(c, true)
+	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
 		return
 	}
@@ -177,13 +177,13 @@ func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
 			)
 			return
 		}
-		res := payload.ProtocolOpenidConnectTokenResponse(getNewTokenResult)
+		protocolOpenidConnectTokenResponse := payload.ProtocolOpenidConnectTokenResponse(getNewTokenResult)
 		c.JSON(
 			http.StatusOK,
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				res,
+				protocolOpenidConnectTokenResponse,
 			),
 		)
 	}
@@ -191,7 +191,7 @@ func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
 
 func (h *AuthenticateHandler) Logout(c *gin.Context) {
 
-	ctx, isSuccess := utils.PrepareContext(c, true)
+	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
 		return
 	}
@@ -214,14 +214,14 @@ func (h *AuthenticateHandler) Logout(c *gin.Context) {
 			),
 		)
 	} else {
-		res := payload.RevokeTokenErrorResponse(revokeTokenResult)
-		if res.Error != "" {
+		revokeTokenErrorResponse := payload.KeycloakCommonErrorResponseResponse(revokeTokenResult)
+		if revokeTokenErrorResponse.Error != "" {
 			c.AbortWithStatusJSON(
 				http.StatusForbidden,
 				utils.ReturnResponse(
 					c,
 					constant.AuthenticateFailure,
-					res,
+					revokeTokenErrorResponse,
 				),
 			)
 			return
@@ -231,8 +231,44 @@ func (h *AuthenticateHandler) Logout(c *gin.Context) {
 			utils.ReturnResponse(
 				c,
 				constant.Success,
-				res,
+				revokeTokenErrorResponse,
 			),
 		)
 	}
+}
+
+func (h *AuthenticateHandler) Register(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c, true)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	requestPayload := payload.RegisterRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if registerUserError := keycloak.KeycloakUserRegister(h.Ctx, requestPayload.Request); registerUserError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.AuthenticateFailure,
+				nil,
+				registerUserError.Error(),
+			),
+		)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
 }

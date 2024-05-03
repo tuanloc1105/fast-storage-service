@@ -11,10 +11,14 @@ var (
 )
 
 const (
-	KeycloakLoginPath       = "/realms/master/protocol/openid-connect/token"
-	KeycloakGetUserInfoPath = "/realms/master/protocol/openid-connect/token/introspect"
-	KeycloakGetNewTokenPath = "/realms/master/protocol/openid-connect/token"
-	KeycloakRevokeTokenPath = "/realms/master/protocol/openid-connect/revoke"
+	KeycloakRealm             = "master"
+	KeycloakLoginPath         = "/realms/" + KeycloakRealm + "/protocol/openid-connect/token"
+	KeycloakGetUserInfoPath   = "/realms/" + KeycloakRealm + "/protocol/openid-connect/token/introspect"
+	KeycloakGetNewTokenPath   = "/realms/" + KeycloakRealm + "/protocol/openid-connect/token"
+	KeycloakRevokeTokenPath   = "/realms/" + KeycloakRealm + "/protocol/openid-connect/revoke"
+	KeycloakUserRegisterPath  = "/admin/realms/" + KeycloakRealm + "/users"
+	KeycloakSearchUserPath    = "/admin/realms/" + KeycloakRealm + "/users?briefRepresentation=true&search=%s"
+	KeycloakResetPasswordPath = "/admin/realms/" + KeycloakRealm + "/users/%s/reset-password"
 )
 
 func CheckKeycloakInfo() bool {

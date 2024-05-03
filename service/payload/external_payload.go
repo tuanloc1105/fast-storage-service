@@ -47,7 +47,43 @@ type ResourceAccess struct {
 	Account     RealmAccess `json:"account"`
 }
 
-type RevokeTokenError struct {
+type KeycloakCommonErrorResponse struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
+	ErrorMessage     string `json:"errorMessage"`
+}
+
+type RealmsUsersCreationInfo struct {
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	FirstName     string `json:"firstName"`
+	LastName      string `json:"lastName"`
+	EmailVerified bool   `json:"emailVerified"`
+	Enabled       bool   `json:"enabled"`
+}
+
+type RealmsUsersInfo struct {
+	ID               string                `json:"id"`
+	Username         string                `json:"username"`
+	FirstName        string                `json:"firstName"`
+	LastName         string                `json:"lastName"`
+	Email            string                `json:"email"`
+	EmailVerified    bool                  `json:"emailVerified"`
+	CreatedTimestamp int64                 `json:"createdTimestamp"`
+	Enabled          bool                  `json:"enabled"`
+	Access           RealmsUsersInfoAccess `json:"access"`
+}
+
+type RealmsUsersInfoAccess struct {
+	ManageGroupMembership bool `json:"manageGroupMembership"`
+	View                  bool `json:"view"`
+	MapRoles              bool `json:"mapRoles"`
+	Impersonate           bool `json:"impersonate"`
+	Manage                bool `json:"manage"`
+}
+
+type ResetPasswordKeycloakInput struct {
+	Temporary bool   `json:"temporary"`
+	Type      string `json:"type"`
+	Value     string `json:"value"`
 }

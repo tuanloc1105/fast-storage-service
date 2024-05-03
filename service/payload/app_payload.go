@@ -1,5 +1,18 @@
 package payload
 
+type RegisterRequestBodyValue struct {
+	Username        string `json:"username" binding:"required"`
+	Password        string `json:"password" binding:"required"`
+	ConfirmPassword string `json:"confirmPassword" binding:"required"`
+	Email           string `json:"email" binding:"required"`
+	FirstName       string `json:"firstName" binding:"required"`
+	LastName        string `json:"lastName" binding:"required"`
+}
+
+type RegisterRequestBody struct {
+	Request RegisterRequestBodyValue `json:"request"`
+}
+
 type LoginRequestBodyValue struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
@@ -72,7 +85,8 @@ type ResourceAccessResponse struct {
 	Account     RealmAccessResponse `json:"account"`
 }
 
-type RevokeTokenErrorResponse struct {
+type KeycloakCommonErrorResponseResponse struct {
 	Error            string `json:"error"`
 	ErrorDescription string `json:"errorDescription"`
+	ErrorMessage     string `json:"errorMessage"`
 }

@@ -10,7 +10,7 @@ import (
 	"fmt"
 )
 
-func KeycloakRevokeToken(ctx context.Context, refreshToken string) (payload.RevokeTokenError, error) {
+func KeycloakRevokeToken(ctx context.Context, refreshToken string) (payload.KeycloakCommonErrorResponse, error) {
 	revokeTokenCurlCommand := fmt.Sprintf(
 		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
 		config.KeycloakApiUrl+config.KeycloakRevokeTokenPath,
@@ -18,7 +18,7 @@ func KeycloakRevokeToken(ctx context.Context, refreshToken string) (payload.Revo
 		config.KeycloakClientSecret,
 		refreshToken,
 	)
-	result := payload.RevokeTokenError{}
+	result := payload.KeycloakCommonErrorResponse{}
 	shellStdout, _, shellError := utils.Shellout(ctx, revokeTokenCurlCommand)
 	if shellError != nil {
 		log.WithLevel(constant.Info, ctx, "an error has been occurred: %s", shellError.Error())

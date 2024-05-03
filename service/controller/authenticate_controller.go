@@ -13,8 +13,10 @@ func AuthenticateController(router *gin.Engine, db *gorm.DB) {
 	handler := &services.AuthenticateHandler{DB: db}
 
 	authenticateRouter := router.Group(constant.BaseApiPath + "/auth")
+
 	authenticateRouter.POST("/login", utils.RequestLogger, utils.ResponseLogger, handler.Login, utils.ErrorHandler)
 	authenticateRouter.GET("/get_user_info", utils.AuthenticationWithAuthorization([]string{}), utils.RequestLogger, utils.ResponseLogger, handler.GetUserInfo, utils.ErrorHandler)
-	authenticateRouter.POST("/get_new_token", utils.RequestLogger, utils.ResponseLogger, handler.GetNewToken, utils.ErrorHandler)
-	authenticateRouter.POST("/logout", utils.RequestLogger, utils.ResponseLogger, handler.Logout, utils.ErrorHandler)
+	authenticateRouter.POST("/get_new_token", utils.AuthenticationWithAuthorization([]string{}), utils.RequestLogger, utils.ResponseLogger, handler.GetNewToken, utils.ErrorHandler)
+	authenticateRouter.POST("/logout", utils.AuthenticationWithAuthorization([]string{}), utils.RequestLogger, utils.ResponseLogger, handler.Logout, utils.ErrorHandler)
+	authenticateRouter.POST("/register", utils.RequestLogger, utils.ResponseLogger, handler.Register, utils.ErrorHandler)
 }

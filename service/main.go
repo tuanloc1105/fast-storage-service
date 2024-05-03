@@ -16,6 +16,12 @@ import (
 
 func main() {
 	var ctx = context.Background()
+
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Application starting <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+	)
 	router := gin.Default()
 
 	router.NoRoute(
