@@ -46,3 +46,8 @@ type ResourceAccess struct {
 	MasterRealm RealmAccess `json:"master-realm"`
 	Account     RealmAccess `json:"account"`
 }
+
+type RevokeTokenError struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}

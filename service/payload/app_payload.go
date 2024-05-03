@@ -17,6 +17,14 @@ type GetNewTokenBody struct {
 	Request GetNewTokenBodyValue `json:"request"`
 }
 
+type LogoutBodyValue struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
+type LogoutBody struct {
+	Request LogoutBodyValue `json:"request"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`
@@ -62,4 +70,9 @@ type RealmAccessResponse struct {
 type ResourceAccessResponse struct {
 	MasterRealm RealmAccessResponse `json:"masterRealm"`
 	Account     RealmAccessResponse `json:"account"`
+}
+
+type RevokeTokenErrorResponse struct {
+	Error            string `json:"error"`
+	ErrorDescription string `json:"errorDescription"`
 }

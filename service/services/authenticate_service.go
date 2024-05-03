@@ -58,19 +58,7 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 			)
 			return
 		}
-		res := payload.ProtocolOpenidConnectTokenResponse{
-			AccessToken:      loginResult.AccessToken,
-			ExpiresIn:        loginResult.ExpiresIn,
-			RefreshExpiresIn: loginResult.RefreshExpiresIn,
-			RefreshToken:     loginResult.RefreshToken,
-			TokenType:        loginResult.TokenType,
-			IDToken:          loginResult.IDToken,
-			NotBeforePolicy:  loginResult.NotBeforePolicy,
-			SessionState:     loginResult.SessionState,
-			Scope:            loginResult.Scope,
-			Error:            loginResult.Error,
-			ErrorDescription: loginResult.ErrorDescription,
-		}
+		res := payload.ProtocolOpenidConnectTokenResponse(loginResult)
 		c.JSON(
 			http.StatusOK,
 			utils.ReturnResponse(
@@ -189,18 +177,54 @@ func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
 			)
 			return
 		}
-		res := payload.ProtocolOpenidConnectTokenResponse{
-			AccessToken:      getNewTokenResult.AccessToken,
-			ExpiresIn:        getNewTokenResult.ExpiresIn,
-			RefreshExpiresIn: getNewTokenResult.RefreshExpiresIn,
-			RefreshToken:     getNewTokenResult.RefreshToken,
-			TokenType:        getNewTokenResult.TokenType,
-			IDToken:          getNewTokenResult.IDToken,
-			NotBeforePolicy:  getNewTokenResult.NotBeforePolicy,
-			SessionState:     getNewTokenResult.SessionState,
-			Scope:            getNewTokenResult.Scope,
-			Error:            getNewTokenResult.Error,
-			ErrorDescription: getNewTokenResult.ErrorDescription,
+		res := payload.ProtocolOpenidConnectTokenResponse(getNewTokenResult)
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				res,
+			),
+		)
+	}
+}
+
+func (h *AuthenticateHandler) Logout(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c, true)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	requestPayload := payload.LogoutBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if revokeTokenResult, revokeTokenError := keycloak.KeycloakRevokeToken(h.Ctx, requestPayload.Request.RefreshToken); revokeTokenError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			utils.ReturnResponse(
+				c,
+				constant.AuthenticateFailure,
+				nil,
+				revokeTokenError.Error(),
+			),
+		)
+	} else {
+		res := payload.RevokeTokenErrorResponse(revokeTokenResult)
+		if res.Error != "" {
+			c.AbortWithStatusJSON(
+				http.StatusForbidden,
+				utils.ReturnResponse(
+					c,
+					constant.AuthenticateFailure,
+					res,
+				),
+			)
+			return
 		}
 		c.JSON(
 			http.StatusOK,
