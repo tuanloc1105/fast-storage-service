@@ -6,6 +6,7 @@ import (
 	"fast-storage-go-service/keycloak"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -271,4 +272,51 @@ func (h *AuthenticateHandler) Register(c *gin.Context) {
 			nil,
 		),
 	)
+}
+
+func (h *AuthenticateHandler) ActiveAccount(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c, true)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	userId := c.Query("userId")
+	username := c.Query("username")
+
+	if userId == "" || username == "" {
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeHTML,
+			[]byte(`
+				<h1>user id and username is empty</h1>
+			`),
+		)
+		return
+	}
+
+	if updateUserError := keycloak.KeycloakActiveAccount(h.Ctx, userId, username); updateUserError != nil {
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeHTML,
+			[]byte(fmt.Sprintf(
+				`
+				<h1>Error: %s</h1>
+			`, updateUserError.Error(),
+			)),
+		)
+		return
+	} else {
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeHTML,
+			[]byte(
+				`
+				<h1>Active successfully</h1>
+			`,
+			),
+		)
+	}
+
 }

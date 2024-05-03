@@ -47,4 +47,10 @@ func AuthenticateController(router *gin.Engine, db *gorm.DB) {
 		handler.Register,
 		utils.ErrorHandler)
 
+	authenticateRouter.GET("/active_account",
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.ActiveAccount,
+		utils.ErrorHandler)
+
 }

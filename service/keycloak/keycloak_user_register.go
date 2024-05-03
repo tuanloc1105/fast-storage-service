@@ -34,7 +34,7 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 			FirstName:     input.FirstName,
 			LastName:      input.LastName,
 			EmailVerified: false,
-			Enabled:       true,
+			Enabled:       false, // active thourgh another api
 		}
 		registerUserRequestJsonString := utils.StructToJson(registerUserRequest)
 		userRegisterCurlCommand := fmt.Sprintf(

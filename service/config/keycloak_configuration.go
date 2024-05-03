@@ -19,6 +19,7 @@ const (
 	KeycloakUserRegisterPath  = "/admin/realms/" + KeycloakRealm + "/users"
 	KeycloakSearchUserPath    = "/admin/realms/" + KeycloakRealm + "/users?briefRepresentation=true&search=%s"
 	KeycloakResetPasswordPath = "/admin/realms/" + KeycloakRealm + "/users/%s/reset-password"
+	KeycloakUpdateUserPath    = "/admin/realms/" + KeycloakRealm + "/users/%s"
 )
 
 func CheckKeycloakInfo() bool {
