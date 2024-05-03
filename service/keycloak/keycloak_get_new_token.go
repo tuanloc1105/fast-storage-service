@@ -12,8 +12,8 @@ import (
 
 func KeycloakGetNewToken(ctx context.Context, refreshToken string) (payload.ProtocolOpenidConnectToken, error) {
 	getNewTokenCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s/realms/master/protocol/openid-connect/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'grant_type=refresh_token' --data-urlencode 'refresh_token=%s'",
-		config.KeycloakApiUrl,
+		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'grant_type=refresh_token' --data-urlencode 'refresh_token=%s'",
+		config.KeycloakApiUrl+config.KeycloakGetNewTokenPath,
 		config.KeycloakClientId,
 		config.KeycloakClientSecret,
 		refreshToken,

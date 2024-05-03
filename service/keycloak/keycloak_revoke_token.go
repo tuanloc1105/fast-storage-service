@@ -12,8 +12,8 @@ import (
 
 func KeycloakRevokeToken(ctx context.Context, refreshToken string) (payload.RevokeTokenError, error) {
 	revokeTokenCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s/realms/master/protocol/openid-connect/revoke' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
-		config.KeycloakApiUrl,
+		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
+		config.KeycloakApiUrl+config.KeycloakRevokeTokenPath,
 		config.KeycloakClientId,
 		config.KeycloakClientSecret,
 		refreshToken,
