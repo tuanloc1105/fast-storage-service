@@ -28,6 +28,10 @@ spec:
           env:
             - name: GIN_MODE
               value: "release"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
 
             - name: DATABASE_HOST
               valueFrom:
