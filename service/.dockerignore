@@ -1,0 +1,6 @@
+service_log/
+postgres/
+docker-compose.yml
+Dockerfile
+README.md
+Dockerfile.local

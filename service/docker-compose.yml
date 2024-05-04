@@ -1,0 +1,41 @@
+services:
+# Run these command before compose up
+#     - go mod download
+#     - CGO_ENABLED=0 GOOS=linux go build -o ./go_app
+  app:
+    image: app:latest
+    build:
+      context: .
+      dockerfile: ./Dockerfile.local
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./service_log:/service_log
+    environment:
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=fast-storage-service
+      - DATABASE_MIGRATION=true
+      - DATABASE_INITIALIZATION_DATA=false
+      - KEYCLOAK_CLIENT_ID=fast-storage-service
+      - KEYCLOAK_CLIENT_SECRET=Wog91caQCn39MZwgRH9TxM9MZ0oqu4GG
+      - KEYCLOAK_API_URL=https://localhost:8443
+      - KEYCLOAK_ADMIN_USERNAME=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - ACCOUNT_ACTIVE_HOST=http://localhost:8090
+    depends_on:
+      - db
+
+  db:
+    restart: on-failure
+    image: postgres:latest
+    container_name: db
+    ports:
+      - "6543:5432"
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fast-storage-service

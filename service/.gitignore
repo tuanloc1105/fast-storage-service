@@ -8,6 +8,8 @@ build/
 
 ### Log Folder ###
 /service_log/
+/postgres/
+/go_app
 
 ### STS ###
 .apt_generated
