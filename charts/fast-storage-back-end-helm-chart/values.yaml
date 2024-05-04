@@ -16,3 +16,4 @@ keycloak_api_url: https://192.168.1.22:8443
 keycloak_admin_username: YWRtaW4=
 keycloak_admin_password: YWRtaW4=
 account_active_host: https://polliwog-one-rarely.ngrok-free.app
+nfs_host: 192.168.1.22

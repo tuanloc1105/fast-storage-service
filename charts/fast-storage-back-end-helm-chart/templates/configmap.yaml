@@ -11,3 +11,4 @@ data:
   database_initialization_data: {{ .Values.database_initialization_data | quote }}
   keycloak_api_url: {{ .Values.keycloak_api_url | quote }}
   account_active_host: {{ .Values.account_active_host | quote }}
+  nfs_host: {{ .Values.nfs_host | quote }}

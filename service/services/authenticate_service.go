@@ -26,7 +26,7 @@ type AuthenticateHandler struct {
 	Ctx context.Context
 }
 
-func (h *AuthenticateHandler) Login(c *gin.Context) {
+func (h AuthenticateHandler) Login(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {
@@ -74,7 +74,7 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 	}
 }
 
-func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
+func (h AuthenticateHandler) GetUserInfo(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
@@ -145,7 +145,7 @@ func (h *AuthenticateHandler) GetUserInfo(c *gin.Context) {
 	}
 }
 
-func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
+func (h AuthenticateHandler) GetNewToken(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
@@ -193,7 +193,7 @@ func (h *AuthenticateHandler) GetNewToken(c *gin.Context) {
 	}
 }
 
-func (h *AuthenticateHandler) Logout(c *gin.Context) {
+func (h AuthenticateHandler) Logout(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
@@ -241,7 +241,7 @@ func (h *AuthenticateHandler) Logout(c *gin.Context) {
 	}
 }
 
-func (h *AuthenticateHandler) Register(c *gin.Context) {
+func (h AuthenticateHandler) Register(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {
@@ -277,7 +277,7 @@ func (h *AuthenticateHandler) Register(c *gin.Context) {
 	)
 }
 
-func (h *AuthenticateHandler) ActiveAccount(c *gin.Context) {
+func (h AuthenticateHandler) ActiveAccount(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {

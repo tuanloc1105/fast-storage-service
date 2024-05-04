@@ -16,7 +16,8 @@ env info:
     "KEYCLOAK_API_URL": "https://localhost:8443",
     "KEYCLOAK_ADMIN_USERNAME": "admin",
     "KEYCLOAK_ADMIN_PASSWORD": "admin",
-    "ACCOUNT_ACTIVE_HOST": "http://localhost:8080"
+    "ACCOUNT_ACTIVE_HOST": "http://localhost:8080",
+    "NFS_HOST": "/dev/nvme0n1p7"
 }
 ```
 

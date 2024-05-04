@@ -90,3 +90,10 @@ type KeycloakCommonErrorResponseResponse struct {
 	ErrorDescription string `json:"errorDescription"`
 	ErrorMessage     string `json:"errorMessage"`
 }
+
+type SystemStorageStatus struct {
+	Size            string `json:"size"`
+	Used            string `json:"used"`
+	Avail           string `json:"avail"`
+	UseInPercentage string `json:"useInPercentage"`
+}

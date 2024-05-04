@@ -54,6 +54,7 @@ func main() {
 	}
 
 	controller.AuthenticateController(router, db)
+	controller.StorageController(router, db)
 
 	if isKeycloakInfoSet := config.CheckKeycloakInfo(); !isKeycloakInfoSet {
 		panic(errors.New("keycloak is required to run this application"))

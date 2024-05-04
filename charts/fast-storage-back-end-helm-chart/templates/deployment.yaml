@@ -68,6 +68,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Release.Name }}-cf
                   key: account_active_host
+            - name: NFS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: nfs_host
 
             - name: DATABASE_USERNAME
               valueFrom:
