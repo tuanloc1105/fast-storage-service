@@ -8,7 +8,7 @@ database_password: cG9zdGdyZXM=
 database_host: 192.168.1.22
 database_port: 5432
 database_name: fast-storage-service
-database_migration: true
+database_migration: false
 database_initialization_data: false
 keycloak_client_id: ZmFzdC1zdG9yYWdlLXNlcnZpY2U=
 keycloak_client_secret: V29nOTFjYVFDbjM5TVp3Z1JIOVR4TTlNWjBvcXU0R0c=
