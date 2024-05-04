@@ -11,6 +11,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   nfs:
-    path: "/mnt/nfs/logs"
+    path: "/mnt/nfs"
     server: "192.168.1.22"
   persistentVolumeReclaimPolicy: Retain
