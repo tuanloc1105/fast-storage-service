@@ -13,3 +13,17 @@ type BaseEntity struct {
 	CreatedBy string    `json:"createdBy" gorm:"column:created_by;not null"`
 	UpdatedBy string    `json:"updatedBy" gorm:"column:updated_by;not null"`
 }
+
+type UserAccountActivationLog struct {
+	BaseEntity BaseEntity `gorm:"embedded" json:"baseInfo"`
+	UserId     string     `json:"userId" gorm:"column:user_id;not null;unique"`
+	Username   string     `json:"username" gorm:"column:username;not null"`
+}
+
+type Tabler interface {
+	TableName() string
+}
+
+func (UserAccountActivationLog) TableName() string {
+	return "user_account_activation_log"
+}

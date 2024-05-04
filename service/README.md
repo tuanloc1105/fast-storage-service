@@ -9,6 +9,8 @@ env info:
     "DATABASE_HOST": "localhost",
     "DATABASE_PORT": "5432",
     "DATABASE_NAME": "fast-storage-service",
+    "DATABASE_MIGRATION": "true",
+    "DATABASE_INITIALIZATION_DATA": "false",
     "KEYCLOAK_CLIENT_ID": "fast-storage-service",
     "KEYCLOAK_CLIENT_SECRET": "Wog91caQCn39MZwgRH9TxM9MZ0oqu4GG",
     "KEYCLOAK_API_URL": "https://localhost:8443",

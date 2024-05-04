@@ -83,4 +83,8 @@ var (
 		ErrorCode:    -9,
 		ErrorMessage: "You don't have permission to perform this action",
 	}
+	UserAccountAlreadyActived = ErrorEnums{
+		ErrorCode:    1001,
+		ErrorMessage: "User account already actived",
+	}
 )

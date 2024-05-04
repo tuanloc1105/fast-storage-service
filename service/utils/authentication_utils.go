@@ -75,7 +75,7 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 
 	tokenBody := tokenArray[1] // + "="
 
-	tokenOut, _, tokenError := Shellout(ctx, fmt.Sprintf("echo '%s' | base64 -d", tokenBody))
+	tokenOut, _, tokenError := Shellout(ctx, fmt.Sprintf("echo '%s' | base64 -d", tokenBody), false, false)
 
 	if tokenError != nil && tokenOut == "" {
 		return result, tokenError

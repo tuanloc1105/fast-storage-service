@@ -2,12 +2,15 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/keycloak"
+	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -296,27 +299,70 @@ func (h *AuthenticateHandler) ActiveAccount(c *gin.Context) {
 		return
 	}
 
-	if updateUserError := keycloak.KeycloakActiveAccount(h.Ctx, userId, username); updateUserError != nil {
+	errorEnum := constant.Success
+
+	transactionError := h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+		userAccountActivationLog := model.UserAccountActivationLog{}
+		findUserAccountActivationLogResult := tx.Where(
+			tx.Where(model.UserAccountActivationLog{
+				UserId: userId,
+			}),
+		).Or(
+			tx.Where(model.UserAccountActivationLog{
+				Username: username,
+			}),
+		).Find(&userAccountActivationLog)
+		if findUserAccountActivationLogResult.Error != nil {
+			return findUserAccountActivationLogResult.Error
+		}
+		if userAccountActivationLog.BaseEntity.Id != 0 {
+			errorEnum = constant.UserAccountAlreadyActived
+			return errors.New(constant.UserAccountAlreadyActived.ErrorMessage)
+		}
+
+		if updateUserError := keycloak.KeycloakActiveAccount(h.Ctx, userId, username); updateUserError != nil {
+			return updateUserError
+		} else {
+			userAccountActivationLog := model.UserAccountActivationLog{
+				BaseEntity: utils.GenerateNewBaseEntity(h.Ctx),
+				UserId:     userId,
+				Username:   username,
+			}
+			tx.Save(&userAccountActivationLog)
+		}
+		return nil
+	})
+	if errorEnum.ErrorCode != 0 {
 		c.Data(
 			http.StatusOK,
 			constant.ContentTypeHTML,
 			[]byte(fmt.Sprintf(
 				`
 				<h1>Error: %s</h1>
-			`, updateUserError.Error(),
+			`, strconv.Itoa(errorEnum.ErrorCode)+" - "+errorEnum.ErrorMessage,
 			)),
 		)
 		return
-	} else {
+	}
+	if transactionError != nil {
 		c.Data(
 			http.StatusOK,
 			constant.ContentTypeHTML,
-			[]byte(
+			[]byte(fmt.Sprintf(
 				`
-				<h1>Active successfully</h1>
-			`,
-			),
+				<h1>Error: %s</h1>
+			`, transactionError.Error(),
+			)),
 		)
+		return
 	}
-
+	c.Data(
+		http.StatusOK,
+		constant.ContentTypeHTML,
+		[]byte(
+			`
+			<h1>Active successfully</h1>
+		`,
+		),
+	)
 }

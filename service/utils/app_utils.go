@@ -41,13 +41,15 @@ func GetPointerOfAnyValue[T any](a T) *T {
 	return &a
 }
 
-func Shellout(ctx context.Context, command string) (string, string, error) {
-	log.WithLevel(
-		constant.Info,
-		ctx,
-		"Start to executing command: %s",
-		HideSensitiveInformationOfCurlCommand(command),
-	)
+func Shellout(ctx context.Context, command string, isLog ...bool) (string, string, error) {
+	if len(isLog) < 1 || (len(isLog) == 1 && isLog[0]) {
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"Start to executing command: %s",
+			HideSensitiveInformationOfCurlCommand(command),
+		)
+	}
 	var cmd *exec.Cmd
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -71,32 +73,34 @@ func Shellout(ctx context.Context, command string) (string, string, error) {
 	exitCode := cmd.ProcessState.ExitCode()
 	stdoutString := stdout.String()
 	stderrString := stderr.String()
-	log.WithLevel(
-		constant.Info,
-		ctx,
-		"--- command exit status ---\n%d",
-		exitCode,
-	)
-	if IsStringAJson(stdoutString) {
+	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"--- stdout ---\n%s",
-			HideSensitiveJsonField(stdoutString),
+			"--- command exit status ---\n%d",
+			exitCode,
 		)
-	} else {
+		if IsStringAJson(stdoutString) {
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"--- stdout ---\n%s",
+				HideSensitiveJsonField(stdoutString),
+			)
+		} else {
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"--- stdout ---\n%s",
+				stdoutString,
+			)
+		}
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"--- stdout ---\n%s",
-			stdoutString,
+			"--- stderr ---\n%s",
+			stderrString,
 		)
 	}
-	log.WithLevel(
-		constant.Info,
-		ctx,
-		"--- stderr ---\n%s",
-		stderrString,
-	)
 	return stdoutString, stderrString, err
 }
