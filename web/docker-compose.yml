@@ -1,0 +1,6 @@
+services:
+  web:
+    container_name: web
+    image: web:latest
+    ports:
+      - "90:80"
