@@ -108,6 +108,7 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 	if appendLogToFileError != nil {
 		log.Error(fmt.Sprintf(
 			constant.LogPattern,
+			podName,
 			traceId,
 			username,
 			fmt.Sprintf("An error has been occurred when appending log to file: %s", appendLogToFileError.Error()),
