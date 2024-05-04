@@ -133,15 +133,15 @@ print_message "Starting to build on remote host"
 
 docker_build_command="docker build -f ./Dockerfile -t ${images_name}:${images_tag} ."
 print_message_and_command_with_out_execute "Building image with Docker" "${docker_build_command}"
-ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; eval ${docker_build_command}"
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; echo ${docker_build_command} > docker_build_command.txt ; eval ${docker_build_command}"
 
 docker_push_command="docker push ${images_name}:${images_tag}"
 print_message_and_command_with_out_execute "Pushing images to image registry" "${docker_push_command}"
-ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; eval ${docker_push_command}"
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; echo ${docker_push_command} > docker_push_command.txt ; eval ${docker_push_command}"
 
 helm_upgrade_command="helm upgrade -i --force --set image.name=${images_name},image.tag=${images_tag},replica=${replica},port=6060 ${app_name} -n ${app_namespace} --create-namespace ./fast-storage-back-end-helm-chart"
 print_message_and_command_with_out_execute "Upgrading helm chart of application" "${helm_upgrade_command}"
-try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; eval ${helm_upgrade_command}\""
+try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; echo ${helm_upgrade_command} > helm_upgrade_command.txt ; eval ${helm_upgrade_command}\""
 
 docker_remove_image_command="docker rmi ${images_name}:${images_tag}"
 print_message_and_command_with_out_execute "Removing built images" "${docker_remove_image_command}"
