@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cf
+  namespace: {{ .Release.Namespace }}
+data:
+  database_host: {{ .Values.database_host | quote }}
+  database_port: {{ .Values.database_port | quote }}
+  database_name: {{ .Values.database_name | quote }}
+  database_migration: {{ .Values.database_migration | quote }}
+  database_initialization_data: {{ .Values.database_initialization_data | quote }}
+  keycloak_api_url: {{ .Values.keycloak_api_url | quote }}
+  account_active_host: {{ .Values.account_active_host | quote }}

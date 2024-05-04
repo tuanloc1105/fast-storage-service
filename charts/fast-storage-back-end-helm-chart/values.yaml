@@ -1,0 +1,18 @@
+image:
+  name: tuanloc
+  tag: service
+port: 8080
+target_port: 8080
+database_username: cG9zdGdyZXM=
+database_password: cG9zdGdyZXM=
+database_host: localhost
+database_port: 5432
+database_name: fast-storage-service
+database_migration: true
+database_initialization_data: false
+keycloak_client_id: ZmFzdC1zdG9yYWdlLXNlcnZpY2U=
+keycloak_client_secret: V29nOTFjYVFDbjM5TVp3Z1JIOVR4TTlNWjBvcXU0R0c=
+keycloak_api_url: https://localhost:8443
+keycloak_admin_username: YWRtaW4=
+keycloak_admin_password: YWRtaW4=
+account_active_host: http://localhost:8080
