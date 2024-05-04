@@ -46,7 +46,7 @@ func Shellout(ctx context.Context, command string) (string, string, error) {
 		constant.Info,
 		ctx,
 		"Start to executing command: %s",
-		command,
+		HideSensitiveInformationOfCurlCommand(command),
 	)
 	var cmd *exec.Cmd
 	var stdout bytes.Buffer
@@ -77,12 +77,21 @@ func Shellout(ctx context.Context, command string) (string, string, error) {
 		"--- command exit status ---\n%d",
 		exitCode,
 	)
-	log.WithLevel(
-		constant.Info,
-		ctx,
-		"--- stdout ---\n%s",
-		stdoutString,
-	)
+	if IsStringAJson(stdoutString) {
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"--- stdout ---\n%s",
+			HideSensitiveJsonField(stdoutString),
+		)
+	} else {
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"--- stdout ---\n%s",
+			stdoutString,
+		)
+	}
 	log.WithLevel(
 		constant.Info,
 		ctx,

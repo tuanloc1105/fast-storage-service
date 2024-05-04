@@ -39,7 +39,7 @@ func (h *AuthenticateHandler) Login(c *gin.Context) {
 
 	if loginResult, loginError := keycloak.KeycloakLogin(h.Ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
 		c.AbortWithStatusJSON(
-			http.StatusUnauthorized,
+			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.AuthenticateFailure,

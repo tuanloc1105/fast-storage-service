@@ -67,6 +67,41 @@ func HideSensitiveJsonField(inputJson string) string {
 	return strings.Join(element, "\"")
 }
 
+func HideSensitiveInformationOfCurlCommand(input string) string {
+	if !strings.Contains(input, "curl") {
+		return input
+	}
+	array := strings.Split(input, " ")
+	for index, element := range array {
+		if strings.Contains(element, "'") {
+			element1 := strings.Replace(element, "'", "", -1)
+			if index-1 >= 0 {
+				previousElement := array[index-1]
+				if strings.Contains(previousElement, "Bearer") || strings.Contains(previousElement, "key") {
+					array[index] = "***'"
+					continue
+				}
+			}
+			if IsStringAJson(element1) {
+				array[index] = "'" + HideSensitiveJsonField(element1) + "'"
+			} else {
+				if strings.Contains(element1, "=") {
+					element2 := strings.Split(element1, "=")
+					if len(element2) > 1 && IsSensitiveField(element2[0]) {
+						element2[1] = "***"
+						array[index] = "'" + strings.Join(element2, "=") + "'"
+					}
+				}
+			}
+		}
+	}
+	return strings.Join(array, " ")
+}
+
+func IsStringAJson(input string) bool {
+	return json.Valid([]byte(input))
+}
+
 func IsSensitiveField(input string) bool {
 	for _, e := range constant.SensitiveField {
 		if strings.Contains(strings.ToLower(e), strings.ToLower(input)) || strings.Contains(strings.ToLower(input), strings.ToLower(e)) {
