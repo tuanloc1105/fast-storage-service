@@ -11,7 +11,7 @@ database_name: fast-storage-service
 database_migration: false
 database_initialization_data: false
 keycloak_client_id: ZmFzdC1zdG9yYWdlLXNlcnZpY2U=
-keycloak_client_secret: V29nOTFjYVFDbjM5TVp3Z1JIOVR4TTlNWjBvcXU0R0c=
+keycloak_client_secret: b1NHRkZZcFB5UGQ5V0RPck0yczVpamFsOFJ3SHM4Mlo=
 keycloak_api_url: https://192.168.1.22:8443
 keycloak_admin_username: YWRtaW4=
 keycloak_admin_password: YWRtaW4=
