@@ -1,6 +1,54 @@
 #!/bin/bash
 
-bash ./common-bash-function.sh
+handle_error() {
+    echo -e "\n\n >> An error occurred on line $1 \n\n"
+    exit 1
+}
+
+trap 'handle_error $LINENO' ERR
+
+print_message_and_run_input_command() {
+cat <<EOF | cat -
+
+>>> $1
+>>> Command: $2
+
+EOF
+eval $2
+}
+
+print_message_and_command_with_out_execute() {
+cat <<EOF | cat -
+
+>>> $1
+>>> Command: $2
+
+EOF
+}
+
+print_message() {
+cat <<EOF | cat -
+
+>>> $1
+
+EOF
+}
+
+try_catch() {
+    print_message "Try to execute command: $1"
+    if eval $1
+    then
+        print_message "Execute command successfuly"
+    else
+        print_message "Execute command failed. Tryting to execute the second command"
+        if eval $2
+        then
+            print_message "Execute second command successfuly"
+        else
+            print_message "Execute second command failed"
+        fi
+    fi
+}
 
 if [ "$#" -lt 8 ]; then
 cat <<EOF | cat -
@@ -60,10 +108,10 @@ ${git_commit_message_and_commit_id}
 EOF
 
 print_message "Uploading necessary file to target host $ssh_host"
-
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -pr ./charts/fast-storage-back-end-helm-chart/ $ssh_user@$ssh_host:$target_dir
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ./service/Dockerfile $ssh_user@$ssh_host:$target_dir
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ./service/go_app $ssh_user@$ssh_host:$target_dir
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "mkdir -p ${target_dir}"
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./charts/fast-storage-back-end-helm-chart/ $ssh_user@$ssh_host:$target_dir
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./service/Dockerfile $ssh_user@$ssh_host:$target_dir
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./service/go_app $ssh_user@$ssh_host:$target_dir
 
 print_message "Reverting chart information"
 cat <<EOF | cat - | tee ./charts/fast-storage-back-end-helm-chart/Chart.yaml
@@ -91,9 +139,9 @@ docker_push_command="docker push ${images_name}:${images_tag}"
 print_message_and_command_with_out_execute "Pushing images to image registry" "${docker_push_command}"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; eval ${docker_push_command}"
 
-helm_upgrade_command="helm upgrade -i --force --set image.name=${images_name},image.tag=${images_tag},replica=${replica},port=6060 ${app_name} -n ${app_namespace} --create-namespace ./helm"
+helm_upgrade_command="helm upgrade -i --force --set image.name=${images_name},image.tag=${images_tag},replica=${replica},port=6060 ${app_name} -n ${app_namespace} --create-namespace ./fast-storage-back-end-helm-chart"
 print_message_and_command_with_out_execute "Upgrading helm chart of application" "${helm_upgrade_command}"
-ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; eval ${helm_upgrade_command}"
+try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; eval ${helm_upgrade_command}\""
 
 docker_remove_image_command="docker rmi ${images_name}:${images_tag}"
 print_message_and_command_with_out_execute "Removing built images" "${docker_remove_image_command}"
