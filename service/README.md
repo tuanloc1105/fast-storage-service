@@ -19,3 +19,20 @@ env info:
     "ACCOUNT_ACTIVE_HOST": "http://localhost:8080"
 }
 ```
+
+## Running on local with docker
+
+Use docker incase you don't have Go installed on your machine
+
+To run on local with docker. Running the following command:
+
+```shell
+docker compose build
+docker compose up -d
+```
+
+To stop app from running. Running the following command:
+
+```shell
+docker compose down
+```

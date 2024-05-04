@@ -1,7 +1,4 @@
 services:
-# Run these command before compose up
-#     - go mod download
-#     - CGO_ENABLED=0 GOOS=linux go build -o ./go_app
   app:
     image: app:latest
     build:
