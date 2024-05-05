@@ -137,3 +137,13 @@ func GetCurrentUsername(c *gin.Context) (username *string, err error) {
 
 	return &currentUsername, nil
 }
+
+func GetCurrentFullUserInfo(c *gin.Context) (username TokenInformation, err error) {
+	currentUser, isCurrentUserExist := c.Get("auth")
+	result := TokenInformation{}
+	if !isCurrentUserExist {
+		return result, errors.New("can not get current username")
+	}
+	result = currentUser.(TokenInformation)
+	return result, nil
+}
