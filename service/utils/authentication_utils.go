@@ -98,6 +98,7 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 		log.Error(
 			fmt.Sprintf(
 				constant.LogPattern,
+				"",
 				traceId,
 				username,
 				"can not parse token",
