@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/services"
 	"fast-storage-go-service/services/implement"
 	"fast-storage-go-service/utils"
 
@@ -10,7 +11,7 @@ import (
 )
 
 func AuthenticateController(router *gin.Engine, db *gorm.DB) {
-	handler := &implement.AuthenticateHandler{DB: db}
+	var handler services.AuthenticateService = &implement.AuthenticateHandler{DB: db}
 
 	authenticateRouter := router.Group(constant.BaseApiPath + "/auth")
 

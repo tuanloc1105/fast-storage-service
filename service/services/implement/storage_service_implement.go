@@ -14,12 +14,12 @@ import (
 	"gorm.io/gorm"
 )
 
-type StorageService struct {
+type StorageHandler struct {
 	DB  *gorm.DB
 	Ctx context.Context
 }
 
-func (h StorageService) SystemStorageStatus(c *gin.Context) {
+func (h StorageHandler) SystemStorageStatus(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
