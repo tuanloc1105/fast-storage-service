@@ -36,10 +36,12 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 		traceId = traceIdFromContext.(string)
 	}
 	// fmt.Println(strings.Compare(string(level), string(constant.LogLevelType("INFO"))))
+	podName, _ := os.LookupEnv("POD_NAME")
 	var message string
 	if len(parameter) < 1 {
 		message = fmt.Sprintf(
 			constant.LogPattern,
+			podName,
 			traceId,
 			username,
 			content,
@@ -47,6 +49,7 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 	} else {
 		message = fmt.Sprintf(
 			constant.LogPattern,
+			podName,
 			traceId,
 			username,
 			fmt.Sprintf(content, parameter...),
@@ -105,6 +108,7 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 	if appendLogToFileError != nil {
 		log.Error(fmt.Sprintf(
 			constant.LogPattern,
+			podName,
 			traceId,
 			username,
 			fmt.Sprintf("An error has been occurred when appending log to file: %s", appendLogToFileError.Error()),

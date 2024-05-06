@@ -94,11 +94,11 @@ func RequestLogger(c *gin.Context) {
 
 func ResponseLogger(c *gin.Context) {
 	CheckAndSetTraceId(c)
-	c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, PUT, GET, OPTIONS, DELETE")
-	c.Writer.Header().Set("Access-Control-Max-Age", "3600")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With, credential, X-XSRF-TOKEN")
+	// c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
+	// c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	// c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, PUT, GET, OPTIONS, DELETE")
+	// c.Writer.Header().Set("Access-Control-Max-Age", "3600")
+	// c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Content-Length, X-Requested-With, credential, X-XSRF-TOKEN")
 	blw := &BodyLogWriter{body: bytes.NewBufferString(""), ResponseWriter: c.Writer}
 	c.Writer = blw
 

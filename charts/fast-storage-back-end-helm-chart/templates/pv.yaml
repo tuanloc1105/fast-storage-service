@@ -5,10 +5,12 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: microk8s-hostpath
+  storageClassName: mystorageclass
   capacity:
     storage: 2Gi
   accessModes:
     - ReadWriteOnce
-  hostPath:
-    path: "/home/ae403/k8s/logs"
+  nfs:
+    path: "/mnt/nfs"
+    server: "192.168.1.22"
+  persistentVolumeReclaimPolicy: Retain

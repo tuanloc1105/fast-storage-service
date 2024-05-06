@@ -4,7 +4,7 @@ metadata:
   name: {{ .Release.Name }}-pvc
 spec:
   volumeName: {{ .Release.Name }}-pv
-  storageClassName: microk8s-hostpath
+  storageClassName: mystorageclass
   accessModes:
     - ReadWriteOnce
   resources:

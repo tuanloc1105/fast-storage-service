@@ -98,6 +98,7 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 		log.Error(
 			fmt.Sprintf(
 				constant.LogPattern,
+				"",
 				traceId,
 				username,
 				"can not parse token",
@@ -136,4 +137,14 @@ func GetCurrentUsername(c *gin.Context) (username *string, err error) {
 	currentUsername := claim.PreferredUsername
 
 	return &currentUsername, nil
+}
+
+func GetCurrentFullUserInfo(c *gin.Context) (username TokenInformation, err error) {
+	currentUser, isCurrentUserExist := c.Get("auth")
+	result := TokenInformation{}
+	if !isCurrentUserExist {
+		return result, errors.New("can not get current username")
+	}
+	result = currentUser.(TokenInformation)
+	return result, nil
 }
