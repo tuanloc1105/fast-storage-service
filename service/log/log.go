@@ -134,7 +134,8 @@ func GetSplunkInformationFromEnvironment() (host string, token string, source st
 	return splunkHost, splunkToken, splunkSource, splunkSourcetype, splunkIndex, true
 }
 
-func AppendLogToFile(log string) error {
+func AppendLogToFile(logContent string) error {
+	folder := os.Getenv("MOUNT_FOLDER")
 	timeZoneLocation, timeLoadLocationErr := time.LoadLocation("Asia/Ho_Chi_Minh")
 	if timeLoadLocationErr != nil {
 		return timeLoadLocationErr
@@ -143,9 +144,10 @@ func AppendLogToFile(log string) error {
 
 	logFileName := fmt.Sprintf(constant.LogFileLocation, currentTimestamp.Year(), int(currentTimestamp.Month()), currentTimestamp.Day())
 
-	// check if log folder is existed or not
-	if _, directoryStatusError := os.Stat(constant.MountFolder); os.IsNotExist(directoryStatusError) {
-		makeDirectoryAllError := os.MkdirAll(constant.MountFolder, 0755)
+	// check if logContent folder is existed or not
+	if _, directoryStatusError := os.Stat(folder); os.IsNotExist(directoryStatusError) {
+		log.Info(fmt.Sprintf("start to create folder %s", folder))
+		makeDirectoryAllError := os.MkdirAll(folder, 0755)
 		if makeDirectoryAllError != nil {
 			return makeDirectoryAllError
 		}
@@ -174,7 +176,7 @@ func AppendLogToFile(log string) error {
 	// O_RDWR: It opens the file read-write.
 	// O_APPEND: It appends data to the file when writing.
 	// O_CREATE: It creates a new file if none exists.
-	file, openFileError := os.OpenFile(constant.MountFolder+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, openFileError := os.OpenFile(folder+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if openFileError != nil {
 		return openFileError
@@ -187,7 +189,7 @@ func AppendLogToFile(log string) error {
 		}
 	}(file)
 
-	_, writeStringToFileError := file.WriteString(log)
+	_, writeStringToFileError := file.WriteString(logContent)
 
 	if writeStringToFileError != nil {
 		return writeStringToFileError
