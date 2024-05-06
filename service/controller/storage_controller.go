@@ -2,7 +2,7 @@ package controller
 
 import (
 	"fast-storage-go-service/constant"
-	"fast-storage-go-service/services"
+	"fast-storage-go-service/services/implement"
 	"fast-storage-go-service/utils"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +10,7 @@ import (
 )
 
 func StorageController(router *gin.Engine, db *gorm.DB) {
-	handler := &services.StorageService{DB: db}
+	handler := &implement.StorageService{DB: db}
 
 	storageRouter := router.Group(constant.BaseApiPath + "/storage")
 
