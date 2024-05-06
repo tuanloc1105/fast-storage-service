@@ -60,6 +60,10 @@ func main() {
 		panic(errors.New("keycloak is required to run this application"))
 	}
 
+	if isMountFolderFromEnvSet := config.MountFolderLocationConfig(); !isMountFolderFromEnvSet {
+		panic(errors.New("a mount folder is required to run this application, consider to add a mount folder directory path to the environment"))
+	}
+
 	applicationPort := "8080"
 
 	router.GET(constant.BaseApiPath+"/", func(ctx *gin.Context) {

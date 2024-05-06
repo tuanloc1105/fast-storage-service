@@ -13,14 +13,14 @@ spec:
         app: {{ .Release.Name }}
     spec:
       volumes:
-        - name: logs
+        - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-pvc
       containers:
         - name: {{ .Release.Name }}
           volumeMounts:
-            - mountPath: /service_log
-              name: logs
+            - mountPath: {{ .Values.mount_folder }}
+              name: data
           image: "{{ .Values.image.name }}:{{ .Values.image.tag }}"
           imagePullPolicy: IfNotPresent
           ports:

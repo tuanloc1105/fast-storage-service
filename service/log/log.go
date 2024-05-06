@@ -144,8 +144,8 @@ func AppendLogToFile(log string) error {
 	logFileName := fmt.Sprintf(constant.LogFileLocation, currentTimestamp.Year(), int(currentTimestamp.Month()), currentTimestamp.Day())
 
 	// check if log folder is existed or not
-	if _, directoryStatusError := os.Stat(constant.LogFileFolder); os.IsNotExist(directoryStatusError) {
-		makeDirectoryAllError := os.MkdirAll(constant.LogFileFolder, 0755)
+	if _, directoryStatusError := os.Stat(constant.MountFolder); os.IsNotExist(directoryStatusError) {
+		makeDirectoryAllError := os.MkdirAll(constant.MountFolder, 0755)
 		if makeDirectoryAllError != nil {
 			return makeDirectoryAllError
 		}
@@ -174,7 +174,7 @@ func AppendLogToFile(log string) error {
 	// O_RDWR: It opens the file read-write.
 	// O_APPEND: It appends data to the file when writing.
 	// O_CREATE: It creates a new file if none exists.
-	file, openFileError := os.OpenFile(constant.LogFileFolder+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, openFileError := os.OpenFile(constant.MountFolder+logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if openFileError != nil {
 		return openFileError
