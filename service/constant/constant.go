@@ -16,8 +16,6 @@ type ErrorEnums struct {
 
 const BaseApiPath = "/fast_storage/api/v1"
 
-var MountFolder = ""
-
 const LogFileLocation = "fast_storage_service_log_%d_%d_%d.log"
 const DeltaPositive = 0.5
 const DeltaNegative = -0.5

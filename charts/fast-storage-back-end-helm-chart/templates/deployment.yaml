@@ -73,6 +73,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Release.Name }}-cf
                   key: nfs_host
+            - name: MOUNT_FOLDER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: mount_folder
 
             - name: DATABASE_USERNAME
               valueFrom:
