@@ -11,6 +11,14 @@ func MigrationAndInsertDate(db *gorm.DB) {
 	if userAccountActivationLogMigrateErr != nil {
 		panic(userAccountActivationLogMigrateErr)
 	}
+	usersOtpDataMigrateErr := db.AutoMigrate(&model.UsersOtpData{})
+	if usersOtpDataMigrateErr != nil {
+		panic(usersOtpDataMigrateErr)
+	}
+	userAuthenticationLogMigrateErr := db.AutoMigrate(&model.UserAuthenticationLog{})
+	if userAuthenticationLogMigrateErr != nil {
+		panic(userAuthenticationLogMigrateErr)
+	}
 }
 
 func InsertData(db *gorm.DB) {

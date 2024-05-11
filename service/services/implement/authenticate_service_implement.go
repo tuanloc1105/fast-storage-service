@@ -40,7 +40,23 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 		return
 	}
 
+	var baseEntity model.BaseEntity = utils.GenerateNewBaseEntity(h.Ctx)
 	if loginResult, loginError := keycloak.KeycloakLogin(h.Ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
+
+		h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+			userLoginCorruptedLog := model.UserAuthenticationLog{
+				BaseEntity:                     baseEntity,
+				Username:                       requestPayload.Request.Username,
+				AuthenticatedAt:                baseEntity.CreatedAt,
+				AuthenticatedStatus:            constant.AuthenticationCorrupted,
+				AuthenticatedStatusDescription: loginError.Error(),
+			}
+			if saveUserLoginCorruptedLogResult := tx.Save(&userLoginCorruptedLog); saveUserLoginCorruptedLogResult.Error != nil {
+				return saveUserLoginCorruptedLogResult.Error
+			}
+			return nil
+		})
+
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
@@ -50,8 +66,24 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 				loginError.Error(),
 			),
 		)
+		return
 	} else {
 		if loginResult.Error != "" {
+
+			h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+				userLoginFailedLog := model.UserAuthenticationLog{
+					BaseEntity:                     baseEntity,
+					Username:                       requestPayload.Request.Username,
+					AuthenticatedAt:                baseEntity.CreatedAt,
+					AuthenticatedStatus:            constant.AuthenticationFailed,
+					AuthenticatedStatusDescription: fmt.Sprintf("%s - %s", loginResult.Error, loginResult.ErrorDescription),
+				}
+				if saveUserLoginFailedLogResult := tx.Save(&userLoginFailedLog); saveUserLoginFailedLogResult.Error != nil {
+					return saveUserLoginFailedLogResult.Error
+				}
+				return nil
+			})
+
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				utils.ReturnResponse(
@@ -62,6 +94,21 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 			)
 			return
 		}
+
+		h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+			userLoginSuccessfullyLog := model.UserAuthenticationLog{
+				BaseEntity:                     baseEntity,
+				Username:                       requestPayload.Request.Username,
+				AuthenticatedAt:                baseEntity.CreatedAt,
+				AuthenticatedStatus:            constant.AuthenticationSuccessfully,
+				AuthenticatedStatusDescription: "",
+			}
+			if saveUserLoginSuccessfullyLogResult := tx.Save(&userLoginSuccessfullyLog); saveUserLoginSuccessfullyLogResult.Error != nil {
+				return saveUserLoginSuccessfullyLogResult.Error
+			}
+			return nil
+		})
+
 		protocolOpenidConnectTokenResponse := payload.ProtocolOpenidConnectTokenResponse(loginResult)
 		c.JSON(
 			http.StatusOK,

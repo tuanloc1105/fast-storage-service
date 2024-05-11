@@ -32,6 +32,10 @@ const (
 	ContentTypeIconImage = "image/x-icon"
 )
 
+const AuthenticationFailed = "AUTHENTICATION_FAILED"
+const AuthenticationCorrupted = "AUTHENTICATION_CORRUPTED"
+const AuthenticationSuccessfully = "AUTHENTICATION_SUCCESSFULLY"
+
 var SensitiveField = [...]string{"password", "jwt", "token", "client_secret", "Authorization", "x-api-key"} // [...] instead of []: it ensures you get a (fixed size) array instead of a slice. So the values aren't fixed but the size is.
 var ValidMethod = []string{"GET", "POST", "PUT", "DELETE"}
 

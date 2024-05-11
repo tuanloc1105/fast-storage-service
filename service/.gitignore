@@ -10,6 +10,7 @@ build/
 /service_log/
 /postgres/
 /go_app
+*.log
 
 ### STS ###
 .apt_generated
