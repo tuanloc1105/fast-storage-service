@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Example usage: ./back-end-service-automation-deploy.sh "tuanloc/fast-storage-service" "fast-storage-backend" "fs-service" "3" "ae403" "0.tcp.ap.ngrok.io" "17742" "/home/ae403/fs-service"
+
 handle_error() {
     echo -e "\n\n >> An error occurred on line $1 \n\n"
     exit 1
