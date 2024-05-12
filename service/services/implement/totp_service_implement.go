@@ -71,10 +71,11 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 		)
 		return
 	} else {
+		secretKeyDataForSave := strings.Replace(secretKey, "\n", "", -1)
 		qrCodeLabel := "fs-service-" + uuid.New().String()
 		generateQrCodeCommand := fmt.Sprintf(
 			"java -jar additional_source_code/two-factor-auth.jar \"GENERATE_QR_IMAGE_URL\" \"%s\" \"%s\"",
-			secretKey,
+			secretKeyDataForSave,
 			qrCodeLabel,
 		)
 		if qrcodeShellOut, _, qrcodeError := utils.Shellout(h.Ctx, generateQrCodeCommand); qrcodeError != nil {
