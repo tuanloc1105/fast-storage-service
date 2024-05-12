@@ -42,6 +42,7 @@ var ValidMethod = []string{"GET", "POST", "PUT", "DELETE"}
 type LogKey string
 
 const UsernameLogKey LogKey = "username"
+const UserIdLogKey LogKey = "userId"
 const TraceIdLogKey LogKey = "traceId"
 const LogPattern = "[%s] [%s] [%s] 👉️ \t%s"
 
@@ -89,5 +90,9 @@ var (
 	UserAccountAlreadyActived = ErrorEnums{
 		ErrorCode:    1001,
 		ErrorMessage: "User account already actived",
+	}
+	UserAlreadyConfigureOtp = ErrorEnums{
+		ErrorCode:    1002,
+		ErrorMessage: "User already configure otp",
 	}
 )

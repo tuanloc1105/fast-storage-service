@@ -3,6 +3,7 @@ package implement
 import (
 	"context"
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/model"
 	"fast-storage-go-service/utils"
 	"fmt"
 	"net/http"
@@ -33,6 +34,32 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 		return
 	}
 	h.Ctx = ctx
+
+	// check if user already have configured OTP
+	userOtpDataFoundInDatabase := model.UsersOtpData{}
+	h.DB.WithContext(h.Ctx).
+		Where(
+			model.UsersOtpData{
+				UserId: h.Ctx.Value(constant.UserIdLogKey).(string),
+				BaseEntity: model.BaseEntity{
+					Active: utils.GetPointerOfAnyValue(true),
+				},
+			},
+		).
+		Find(&userOtpDataFoundInDatabase)
+
+	if userOtpDataFoundInDatabase.BaseEntity.Id != 0 {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.UserAlreadyConfigureOtp,
+				nil,
+			),
+		)
+		return
+	}
+
 	if secretKey, secretKeyGeneratorError := generateSecret(ctx); secretKeyGeneratorError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
@@ -61,12 +88,27 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 			)
 			return
 		} else {
+			qrCodeImageBase64Data := strings.Replace(qrcodeShellOut, "\n", "", -1)
+			baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+			userOtpData := model.UsersOtpData{
+				BaseEntity:                   baseEntity,
+				UserId:                       h.Ctx.Value(constant.UserIdLogKey).(string),
+				UserOtpSecretData:            secretKey,
+				UserOtpQrCodeImageBase64Data: qrCodeImageBase64Data,
+			}
+			h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+				saveUserOtpDataResult := tx.Save(&userOtpData)
+				if saveUserOtpDataResult.Error != nil {
+					return saveUserOtpDataResult.Error
+				}
+				return nil
+			})
 			c.JSON(
 				http.StatusOK,
 				utils.ReturnResponse(
 					c,
 					constant.Success,
-					strings.Replace(qrcodeShellOut, "\n", "", -1),
+					qrCodeImageBase64Data,
 				),
 			)
 		}
