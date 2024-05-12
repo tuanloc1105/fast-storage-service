@@ -1,0 +1,67 @@
+<div class="font-[sans-serif]">
+  <div class="min-h-screen flex fle-col items-center justify-center py-6 px-4">
+    <div class="grid md:grid-cols-2 items-center gap-10 max-w-6xl w-full">
+      <div class="max-md:text-center">
+        <h2 class="lg:text-5xl text-4xl font-extrabold lg:leading-[55px]">
+          Secure & Swift File Management
+        </h2>
+        <p class="text-sm mt-6">
+          Experience unrivaled safety and speed. Log in now.
+        </p>
+        <p class="text-sm mt-10">
+          Don't have an account
+          <a
+            href="javascript:void(0);"
+            class="text-[#81C784] font-semibold hover:underline ml-1"
+            >Register here</a
+          >
+        </p>
+      </div>
+      <div class="space-y-6 max-w-md md:ml-auto max-md:mx-auto w-full">
+        <h3 class="text-3xl font-extrabold mb-8 max-md:text-center">Sign in</h3>
+        <p-inputGroup>
+          <p-inputGroupAddon>
+            <i class="pi pi-user"></i>
+          </p-inputGroupAddon>
+          <input
+            pInputText
+            placeholder="Username"
+            [(ngModel)]="request.username"
+          />
+        </p-inputGroup>
+        <div>
+          <p-inputGroup>
+            <p-inputGroupAddon>
+              <i class="pi pi-lock"></i>
+            </p-inputGroupAddon>
+            <p-password
+              [(ngModel)]="request.password"
+              [feedback]="false"
+              [toggleMask]="true"
+              placeholder="Password"
+              styleClass="w-full"
+            />
+          </p-inputGroup>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1">
+            <p-checkbox value="remember" inputId="remember" />
+            <label for="remember">Remember me</label>
+          </div>
+          <div class="text-sm">
+            <p-button label="Forgot your password?" [link]="true"></p-button>
+          </div>
+        </div>
+        <div class="!mt-10">
+          <p-button
+            label="Log in"
+            styleClass="w-full"
+            [disabled]="!request.username || !request.password"
+            [loading]="authStore.isLoading()"
+            (click)="login()"
+          ></p-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
