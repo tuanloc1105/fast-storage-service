@@ -1,0 +1,37 @@
+<div class="h-full flex flex-col justify-between">
+  <div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <span class="font-bold text-xl lg:text-lg md:text-base"
+        >File Manager</span
+      >
+      <p-button
+        label="New folder"
+        icon="pi pi-plus"
+        [text]="true"
+        size="small"
+      ></p-button>
+    </div>
+    <p-tree
+      [value]="folderTreeStore.list()"
+      styleClass="p-0"
+      selectionMode="single"
+      (selectionChange)="setSelectedFolder($event)"
+    >
+    </p-tree>
+  </div>
+  <div class="flex flex-col gap-3">
+    <p-meterGroup [value]="value()" labelPosition="start">
+      <ng-template pTemplate="label" let-totalPercent="totalPercent">
+        <div class="flex justify-between">
+          <span class="md:text-sm">Storage usage</span>
+          <span class="text-gray-500 md:text-sm">(230 MB / 1000 MB)</span>
+        </div>
+      </ng-template>
+      <ng-template pTemplate="end">
+        <div class="flex items-center justify-center">
+          <p-button label="Upgrade your Storage" [text]="true" size="small" />
+        </div>
+      </ng-template>
+    </p-meterGroup>
+  </div>
+</div>

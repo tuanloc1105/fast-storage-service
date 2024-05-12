@@ -1,0 +1,9 @@
+{
+  "name": "fast-storage-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/fast-storage-e2e/src",
+  "implicitDependencies": ["fast-storage"],
+  "// targets": "to see all targets run: nx show project fast-storage-e2e --web",
+  "targets": {}
+}
