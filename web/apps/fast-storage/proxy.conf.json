@@ -1,0 +1,11 @@
+{
+  "/api": {
+    "target": "https://polliwog-one-rarely.ngrok-free.app/fast_storage/api/v1",
+    "secure": false,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": ""
+    },
+    "changeOrigin": true
+  }
+}
