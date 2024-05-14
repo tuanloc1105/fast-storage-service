@@ -29,7 +29,7 @@ func AuthenticateController(router *gin.Engine, db *gorm.DB) {
 		utils.ErrorHandler)
 
 	authenticateRouter.POST("/get_new_token",
-		utils.AuthenticationWithAuthorization([]string{}),
+		// utils.AuthenticationWithAuthorization([]string{}),
 		utils.RequestLogger,
 		utils.ResponseLogger,
 		handler.GetNewToken,

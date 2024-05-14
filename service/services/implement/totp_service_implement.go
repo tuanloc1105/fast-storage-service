@@ -2,6 +2,7 @@ package implement
 
 import (
 	"context"
+	"encoding/base64"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/model"
 	"fast-storage-go-service/utils"
@@ -94,7 +95,7 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 			userOtpData := model.UsersOtpData{
 				BaseEntity:                   baseEntity,
 				UserId:                       h.Ctx.Value(constant.UserIdLogKey).(string),
-				UserOtpSecretData:            secretKey,
+				UserOtpSecretData:            secretKeyDataForSave,
 				UserOtpQrCodeImageBase64Data: qrCodeImageBase64Data,
 			}
 			h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
@@ -104,14 +105,32 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 				}
 				return nil
 			})
-			c.JSON(
-				http.StatusOK,
-				utils.ReturnResponse(
-					c,
-					constant.Success,
-					qrCodeImageBase64Data,
-				),
-			)
+			// c.JSON(
+			// 	http.StatusOK,
+			// 	utils.ReturnResponse(
+			// 		c,
+			// 		constant.Success,
+			// 		qrCodeImageBase64Data,
+			// 	),
+			// )
+
+			if qrCodeImageByteArray, base64DecodeError := base64.StdEncoding.DecodeString(qrCodeImageBase64Data); base64DecodeError != nil {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.InternalFailure,
+						base64DecodeError.Error(),
+					),
+				)
+				return
+			} else {
+				c.Data(
+					http.StatusOK,
+					constant.ContentTypePngImage,
+					qrCodeImageByteArray,
+				)
+			}
 		}
 	}
 

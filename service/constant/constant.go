@@ -30,6 +30,7 @@ const (
 	ContentTypeHTML      = "text/html; charset=utf-8"
 	ContentTypeText      = "text/plain; charset=utf-8"
 	ContentTypeIconImage = "image/x-icon"
+	ContentTypePngImage  = "image/png"
 )
 
 const AuthenticationFailed = "AUTHENTICATION_FAILED"
