@@ -7,33 +7,30 @@ import (
 	"fast-storage-go-service/payload"
 )
 
-func KeycloakActiveAccount(ctx context.Context, userId, username string) error {
-
-	// login with admin to register user
+func KeycloakDeactivateAccount(ctx context.Context, username string) error {
 	if adminProtocolOpenidConnectToken, protocolOpenidConnectTokenError := KeycloakLogin(ctx, config.KeycloakAdminUsername, config.KeycloakAdminPassword); protocolOpenidConnectTokenError != nil {
 		return protocolOpenidConnectTokenError
 	} else {
-
 		if adminProtocolOpenidConnectToken.Error != "" {
 			return errors.New(adminProtocolOpenidConnectToken.ErrorDescription)
 		}
-
 		if userSearchingResult, userSearchingResultError := KeycloakSearchUser(ctx, adminProtocolOpenidConnectToken.AccessToken, username); userSearchingResultError != nil {
 			return userSearchingResultError
 		} else {
 			if len(userSearchingResult) != 1 {
-				return errors.New("can not create user")
+				return errors.New("can not deactivate user")
 			}
 			user := userSearchingResult[0]
-			realmsUsersCreationInfo := payload.RealmsUsersCreationInfo{
+			updateUserStatus := payload.RealmsUsersCreationInfo{
 				Username:      user.Username,
 				Email:         user.Email,
 				FirstName:     user.FirstName,
 				LastName:      user.LastName,
 				EmailVerified: true,
-				Enabled:       true,
+				Enabled:       false,
 			}
-			return KeycloakUpdateUser(ctx, adminProtocolOpenidConnectToken.AccessToken, userId, realmsUsersCreationInfo)
+			return KeycloakUpdateUser(ctx, adminProtocolOpenidConnectToken.AccessToken, user.ID, updateUserStatus)
+
 		}
 	}
 }

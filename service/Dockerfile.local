@@ -20,4 +20,6 @@ RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/go_app
 
+ADD ./additional_source_code/ /additional_source_code/
+
 CMD ["/app/go_app"]

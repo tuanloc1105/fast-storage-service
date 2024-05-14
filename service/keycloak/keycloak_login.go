@@ -13,7 +13,7 @@ import (
 func KeycloakLogin(ctx context.Context, username string, password string) (payload.ProtocolOpenidConnectToken, error) {
 
 	loginCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'username=%s' --data-urlencode 'password=%s' --data-urlencode 'grant_type=password' --data-urlencode 'scope=openid'",
+		"curl -k --connect-timeout 30 --max-time 40 --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'username=%s' --data-urlencode 'password=%s' --data-urlencode 'grant_type=password' --data-urlencode 'scope=openid'",
 		config.KeycloakApiUrl+config.KeycloakLoginPath,
 		config.KeycloakClientId,
 		config.KeycloakClientSecret,

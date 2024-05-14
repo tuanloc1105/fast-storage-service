@@ -20,10 +20,33 @@ type UserAccountActivationLog struct {
 	Username   string     `json:"username" gorm:"column:username;not null"`
 }
 
+type UsersOtpData struct {
+	BaseEntity                   BaseEntity `gorm:"embedded" json:"baseInfo"`
+	UserId                       string     `json:"userId" gorm:"column:user_id;not null;unique"`
+	UserOtpSecretData            string     `json:"userOtpSecretData" gorm:"column:user_otp_secret_data;not null"`
+	UserOtpQrCodeImageBase64Data string     `json:"userOtpQrCodeImageBase64Data" gorm:"column:user_otp_qr_code_image_base64_data;not null"`
+}
+
+type UserAuthenticationLog struct {
+	BaseEntity                     BaseEntity `gorm:"embedded" json:"baseInfo"`
+	Username                       string     `json:"username" gorm:"column:Username;not null"`
+	AuthenticatedAt                time.Time  `json:"authenticatedAt" gorm:"column:authenticated_at;not null"`
+	AuthenticatedStatus            string     `json:"authenticatedStatus" gorm:"column:authenticated_status;not null"`
+	AuthenticatedStatusDescription string     `json:"authenticatedStatusDescription" gorm:"column:authenticated_status_description"`
+}
+
 type Tabler interface {
 	TableName() string
 }
 
 func (UserAccountActivationLog) TableName() string {
 	return "user_account_activation_log"
+}
+
+func (UsersOtpData) TableName() string {
+	return "users_otp_data"
+}
+
+func (UserAuthenticationLog) TableName() string {
+	return "user_authentication_log"
 }

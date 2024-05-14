@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Example usage: ./back-end-service-automation-deploy.sh "tuanloc/fast-storage-service" "fast-storage-backend" "fs-service" "3" "ae403" "0.tcp.ap.ngrok.io" "17742" "/home/ae403/fs-service"
+
 handle_error() {
     echo -e "\n\n >> An error occurred on line $1 \n\n"
     exit 1
@@ -110,6 +112,7 @@ EOF
 print_message "Uploading necessary file to target host $ssh_host"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "mkdir -p ${target_dir}"
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./charts/fast-storage-back-end-helm-chart/ $ssh_user@$ssh_host:$target_dir
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./service/additional_source_code/ $ssh_user@$ssh_host:$target_dir
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./service/Dockerfile $ssh_user@$ssh_host:$target_dir
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./service/go_app $ssh_user@$ssh_host:$target_dir
 

@@ -9,6 +9,7 @@ build/
 ### Log Folder ###
 /service_log/
 /postgres/
+/.nx/
 /go_app
 *.log
 

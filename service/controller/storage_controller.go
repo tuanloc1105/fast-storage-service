@@ -22,4 +22,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.SystemStorageStatus,
 		utils.ErrorHandler)
 
+	storageRouter.POST("/get_all_element_in_specific_directory",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.GetAllElementInSpecificDirectory,
+		utils.ErrorHandler)
+
 }

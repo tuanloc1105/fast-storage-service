@@ -96,7 +96,6 @@ export const AuthStore = signalStore(
           })
         )
       ),
-
       logout: rxMethod<LogoutRequest>(
         pipe(
           switchMap((payload) => {
