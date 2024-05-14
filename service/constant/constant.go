@@ -96,4 +96,12 @@ var (
 		ErrorCode:    1002,
 		ErrorMessage: "User already configure otp",
 	}
+	CreateFolderError = ErrorEnums{
+		ErrorCode:    1003,
+		ErrorMessage: "Can not create folder",
+	}
+	ListFolderError = ErrorEnums{
+		ErrorCode:    1004,
+		ErrorMessage: "Can not list folder",
+	}
 )

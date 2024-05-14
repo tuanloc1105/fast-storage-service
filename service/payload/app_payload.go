@@ -10,7 +10,7 @@ type RegisterRequestBodyValue struct {
 }
 
 type RegisterRequestBody struct {
-	Request RegisterRequestBodyValue `json:"request"`
+	Request RegisterRequestBodyValue `json:"request" binding:"required"`
 }
 
 type LoginRequestBodyValue struct {
@@ -19,7 +19,7 @@ type LoginRequestBodyValue struct {
 }
 
 type LoginRequestBody struct {
-	Request LoginRequestBodyValue `json:"request"`
+	Request LoginRequestBodyValue `json:"request" binding:"required"`
 }
 
 type GetNewTokenBodyValue struct {
@@ -27,7 +27,7 @@ type GetNewTokenBodyValue struct {
 }
 
 type GetNewTokenBody struct {
-	Request GetNewTokenBodyValue `json:"request"`
+	Request GetNewTokenBodyValue `json:"request" binding:"required"`
 }
 
 type LogoutBodyValue struct {
@@ -35,7 +35,15 @@ type LogoutBodyValue struct {
 }
 
 type LogoutBody struct {
-	Request LogoutBodyValue `json:"request"`
+	Request LogoutBodyValue `json:"request" binding:"required"`
+}
+
+type GetAllElementInSpecificDirectoryBodyValue struct {
+	CurrentLocation string `json:"currentLocation"`
+}
+
+type GetAllElementInSpecificDirectoryBody struct {
+	Request GetAllElementInSpecificDirectoryBodyValue `json:"request" binding:"required"`
 }
 
 type ProtocolOpenidConnectTokenResponse struct {
@@ -96,4 +104,10 @@ type SystemStorageStatus struct {
 	Used            string `json:"used"`
 	Avail           string `json:"avail"`
 	UseInPercentage string `json:"useInPercentage"`
+}
+
+type FileInformation struct {
+	Size string `json:"size"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }

@@ -6,6 +6,7 @@ import (
 	"fast-storage-go-service/utils/splunk/v2"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -135,7 +136,7 @@ func GetSplunkInformationFromEnvironment() (host string, token string, source st
 }
 
 func AppendLogToFile(logContent string) error {
-	folder := os.Getenv("MOUNT_FOLDER")
+	folder := GetSystemRootFolder()
 	timeZoneLocation, timeLoadLocationErr := time.LoadLocation("Asia/Ho_Chi_Minh")
 	if timeLoadLocationErr != nil {
 		return timeLoadLocationErr
@@ -195,4 +196,16 @@ func AppendLogToFile(logContent string) error {
 		return writeStringToFileError
 	}
 	return nil
+}
+
+func GetSystemRootFolder() string {
+	s := os.Getenv("MOUNT_FOLDER")
+	return EnsureTrailingSlash(s)
+}
+
+func EnsureTrailingSlash(s string) string {
+	if !strings.HasSuffix(s, "/") {
+		s += "/"
+	}
+	return s
 }
