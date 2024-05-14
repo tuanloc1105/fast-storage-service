@@ -12,12 +12,14 @@ type AuthState = {
   isLoggedIn: boolean;
   user: any | null;
   isLoading: boolean;
+  isRefreshing: boolean;
 };
 
 const initialState: AuthState = {
   isLoggedIn: false,
   user: null,
   isLoading: false,
+  isRefreshing: false,
 };
 
 export const AuthStore = signalStore(
@@ -35,10 +37,42 @@ export const AuthStore = signalStore(
         try {
           const info = await lastValueFrom(authService.getUserInfo());
           patchState(store, { user: info, isLoggedIn: true });
+          router.navigate(['app']);
         } catch {
           patchState(store, { isLoggedIn: false });
+          return Promise.reject();
         } finally {
           patchState(store, { isLoading: false });
+        }
+      },
+      async refreshToken() {
+        const refreshToken = await lastValueFrom(
+          localStorageService.getRefreshToken()
+        );
+
+        if (!refreshToken) {
+          patchState(store, { isLoggedIn: false });
+          localStorageService.removeItem();
+          router.navigate(['auth/login']);
+          return Promise.reject();
+        }
+
+        patchState(store, { isRefreshing: true });
+        try {
+          const info = await lastValueFrom(
+            authService.getNewToken({ request: { refreshToken } })
+          );
+          patchState(store, { isRefreshing: false, isLoggedIn: true });
+          localStorageService.setItem({
+            access_token: info.response.accessToken,
+            refresh_token: info.response.refreshToken,
+          });
+          router.navigate(['app']);
+        } catch {
+          patchState(store, { isLoggedIn: false });
+          localStorageService.removeItem();
+          router.navigate(['auth/login']);
+          return Promise.reject();
         }
       },
       login: rxMethod<LoginRequest>(
@@ -53,7 +87,7 @@ export const AuthStore = signalStore(
                     access_token: res.response.accessToken,
                     refresh_token: res.response.refreshToken,
                   });
-                  router.navigate(['/app']);
+                  router.navigate(['app']);
                 },
                 error: () => patchState(store, { isLoggedIn: false }),
                 finalize: () => patchState(store, { isLoading: false }),
@@ -71,7 +105,7 @@ export const AuthStore = signalStore(
                 next: () => {
                   patchState(store, { isLoggedIn: false });
                   localStorageService.removeItem();
-                  router.navigate(['/auth/login']);
+                  router.navigate(['auth/login']);
                 },
                 error: () => patchState(store, { isLoggedIn: false }),
                 finalize: () => patchState(store, { isLoading: false }),
