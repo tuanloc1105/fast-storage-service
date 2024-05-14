@@ -70,7 +70,7 @@ export class SidebarComponent {
       });
     } else {
       patchState(this.#authStore, { isLoggedIn: false });
-      this.#router.navigate(['/auth/login']);
+      this.#router.navigate(['auth/login']);
     }
   }
 }
