@@ -12,7 +12,7 @@ import (
 
 func KeycloakRevokeToken(ctx context.Context, refreshToken string) (payload.KeycloakCommonErrorResponse, error) {
 	revokeTokenCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
+		"curl -k --connect-timeout 30 --max-time 40 --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
 		config.KeycloakApiUrl+config.KeycloakRevokeTokenPath,
 		config.KeycloakClientId,
 		config.KeycloakClientSecret,

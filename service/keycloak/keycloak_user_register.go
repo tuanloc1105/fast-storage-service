@@ -39,7 +39,7 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 		}
 		registerUserRequestJsonString := utils.StructToJson(registerUserRequest)
 		userRegisterCurlCommand := fmt.Sprintf(
-			"curl -k --location '%s' --header 'Content-Type: application/json' --header 'Authorization: Bearer %s' --data-raw '%s'",
+			"curl -k --connect-timeout 30 --max-time 40 --location '%s' --header 'Content-Type: application/json' --header 'Authorization: Bearer %s' --data-raw '%s'",
 			config.KeycloakApiUrl+config.KeycloakUserRegisterPath,
 			adminProtocolOpenidConnectToken.AccessToken,
 			registerUserRequestJsonString,
@@ -76,7 +76,7 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 			}
 
 			resetPasswordCurlCommand := fmt.Sprintf(
-				"curl -k --location --request PUT '%s' --header 'Content-Type: application/json' --header 'Authorization: Bearer %s' --data '%s'",
+				"curl -k --connect-timeout 30 --max-time 40 --location --request PUT '%s' --header 'Content-Type: application/json' --header 'Authorization: Bearer %s' --data '%s'",
 				fmt.Sprintf(config.KeycloakApiUrl+config.KeycloakResetPasswordPath, userSearchingResult[0].ID),
 				adminProtocolOpenidConnectToken.AccessToken,
 				utils.StructToJson(resetPasswordInput),

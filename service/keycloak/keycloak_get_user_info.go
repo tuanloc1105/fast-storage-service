@@ -12,7 +12,7 @@ import (
 
 func KeycloakGetUserInfo(ctx context.Context, token string) (payload.OpenidConnectTokenIntrospect, error) {
 	getUserInfoCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
+		"curl -k --connect-timeout 30 --max-time 40 --location '%s' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'client_id=%s' --data-urlencode 'client_secret=%s' --data-urlencode 'token=%s'",
 		config.KeycloakApiUrl+config.KeycloakGetUserInfoPath,
 		config.KeycloakClientId,
 		config.KeycloakClientSecret,

@@ -13,7 +13,7 @@ import (
 
 func KeycloakSearchUser(ctx context.Context, adminAccessToken string, searchContent string) ([]payload.RealmsUsersInfo, error) {
 	searchUserCurlCommand := fmt.Sprintf(
-		"curl -k --location '%s' --header 'Authorization: Bearer %s'",
+		"curl -k --connect-timeout 30 --max-time 40 --location '%s' --header 'Authorization: Bearer %s'",
 		fmt.Sprintf(config.KeycloakApiUrl+config.KeycloakSearchUserPath, url.QueryEscape(searchContent)),
 		adminAccessToken,
 	)
