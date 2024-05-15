@@ -72,7 +72,7 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	exitCode := cmd.ProcessState.ExitCode()
-	stdoutString := stdout.String()
+	stdoutString := strings.TrimSuffix(stdout.String(), "\n")
 	stderrString := stderr.String()
 	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
 		log.WithLevel(
@@ -103,5 +103,5 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 			stderrString,
 		)
 	}
-	return strings.TrimSuffix(stdoutString, "\n"), stderrString, err
+	return stdoutString, stderrString, err
 }

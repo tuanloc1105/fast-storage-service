@@ -262,7 +262,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 
 	// check if file is exist
-	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep %s | wc -l", folderToView, fileUploadName+fileUploadExtension)
+	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToView, fileUploadName+fileUploadExtension)
 	countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
 	if countFileError != nil {
 		c.AbortWithStatusJSON(
@@ -316,6 +316,60 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 			nil,
 		),
 	)
+}
+
+func (h StorageHandler) DownloadFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	multipartForm, multipartFormError := c.MultipartForm()
+	if multipartFormError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				multipartFormError.Error(),
+			),
+		)
+		return
+	}
+
+	folderLocation := ""
+	folderLocationArray := multipartForm.Value["folderLocation"]
+	if len(folderLocationArray) > 0 {
+		folderLocation = folderLocationArray[0]
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	fileNameToDownloadArray := multipartForm.Value["fileName"]
+
+	if len(fileNameToDownloadArray) < 1 {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"Empty file name to download",
+			),
+		)
+		return
+	}
+
+	fileNameToDownload := url.QueryEscape(fileNameToDownloadArray[0])
+	c.Status(200)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
+	c.Header("Content-Type", "application/octet-stream")
+	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
 }
 
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {

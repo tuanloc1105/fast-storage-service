@@ -116,4 +116,12 @@ var (
 		ErrorCode:    1007,
 		ErrorMessage: "Cannot save file",
 	}
+	DownloadFileError = ErrorEnums{
+		ErrorCode:    1008,
+		ErrorMessage: "Download file error",
+	}
+	FileStatictisError = ErrorEnums{
+		ErrorCode:    1009,
+		ErrorMessage: "File statictis error",
+	}
 )

@@ -6,4 +6,5 @@ type StorageService interface {
 	SystemStorageStatus(c *gin.Context)
 	GetAllElementInSpecificDirectory(c *gin.Context)
 	UploadFile(c *gin.Context)
+	DownloadFile(c *gin.Context)
 }
