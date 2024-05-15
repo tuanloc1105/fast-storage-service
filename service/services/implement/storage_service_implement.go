@@ -109,7 +109,14 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 	if requestPayload.Request.CurrentLocation == "" {
 		folderToView = log.EnsureTrailingSlash(systemRootFolder + ctx.Value(constant.UserIdLogKey).(string))
 	} else {
-		folderToView = log.EnsureTrailingSlash(systemRootFolder+ctx.Value(constant.UserIdLogKey).(string)) + "/" + requestPayload.Request.CurrentLocation + "/"
+		var currentLocationFromRequestPayload string
+		if strings.HasPrefix(requestPayload.Request.CurrentLocation, "/") {
+			currentLocationFromRequestPayload = requestPayload.Request.CurrentLocation[1:]
+		} else {
+			currentLocationFromRequestPayload = requestPayload.Request.CurrentLocation
+		}
+		folderToView = log.EnsureTrailingSlash(systemRootFolder+ctx.Value(constant.UserIdLogKey).(string)) + currentLocationFromRequestPayload
+		folderToView = log.EnsureTrailingSlash(folderToView)
 	}
 
 	// check if use root folder is existing
