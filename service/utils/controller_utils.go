@@ -48,7 +48,7 @@ func RequestLogger(c *gin.Context) {
 	c.Request.Body = io.NopCloser(&buf)
 	dst := &bytes.Buffer{}
 	if err := json.Compact(dst, body); err != nil && len(body) > 0 {
-		panic(err)
+		// panic(err)
 	}
 
 	header := map[string][]string(c.Request.Header)

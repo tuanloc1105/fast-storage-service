@@ -29,4 +29,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.GetAllElementInSpecificDirectory,
 		utils.ErrorHandler)
 
+	storageRouter.POST("/upload_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.UploadFile,
+		utils.ErrorHandler)
+
 }

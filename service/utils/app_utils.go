@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -102,5 +103,5 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 			stderrString,
 		)
 	}
-	return stdoutString, stderrString, err
+	return strings.TrimSuffix(stdoutString, "\n"), stderrString, err
 }

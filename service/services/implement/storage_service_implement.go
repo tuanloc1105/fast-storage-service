@@ -8,10 +8,14 @@ import (
 	"fast-storage-go-service/utils"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -104,20 +108,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 	}
 
 	systemRootFolder := log.GetSystemRootFolder()
-	folderToView := ""
-
-	if requestPayload.Request.CurrentLocation == "" {
-		folderToView = log.EnsureTrailingSlash(systemRootFolder + ctx.Value(constant.UserIdLogKey).(string))
-	} else {
-		var currentLocationFromRequestPayload string
-		if strings.HasPrefix(requestPayload.Request.CurrentLocation, "/") {
-			currentLocationFromRequestPayload = requestPayload.Request.CurrentLocation[1:]
-		} else {
-			currentLocationFromRequestPayload = requestPayload.Request.CurrentLocation
-		}
-		folderToView = log.EnsureTrailingSlash(systemRootFolder+ctx.Value(constant.UserIdLogKey).(string)) + currentLocationFromRequestPayload
-		folderToView = log.EnsureTrailingSlash(folderToView)
-	}
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.CurrentLocation)
 
 	// check if use root folder is existing
 	if _, directoryStatusError := os.Stat(folderToView); os.IsNotExist(directoryStatusError) {
@@ -188,9 +179,13 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if strings.HasPrefix(elementDetail[0], "d") {
 						elementType = "folder"
 					}
+					fileName, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
+					if fileNameUnescapeError != nil {
+						fileName = ""
+					}
 					fileInformation := payload.FileInformation{
 						Size: elementDetail[1],
-						Name: elementDetail[2],
+						Name: fileName,
 						Type: elementType,
 					}
 					listOfFileInformation = append(listOfFileInformation, fileInformation)
@@ -207,5 +202,136 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			}
 		}
 	}
+}
 
+func (h StorageHandler) UploadFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	multipartForm, multipartFormError := c.MultipartForm()
+	if multipartFormError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				multipartFormError.Error(),
+			),
+		)
+		return
+	}
+
+	folderLocation := ""
+	folderLocationArray := multipartForm.Value["folderLocation"]
+
+	if len(folderLocationArray) > 0 {
+		folderLocation = folderLocationArray[0]
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+
+	fileUpload := multipartForm.File["file"]
+
+	if fileUpload == nil || len(fileUpload) == 0 {
+		c.AbortWithStatusJSON(
+			http.StatusNotFound,
+			utils.ReturnResponse(
+				c,
+				constant.EmptyFileInformationError,
+				nil,
+				"Empty file upload",
+			),
+		)
+		return
+	}
+
+	file := fileUpload[0]
+
+	fileUploadName := file.Filename
+
+	fileUploadExtension := filepath.Ext(file.Filename)
+
+	if fileUploadExtension != "" {
+		fileUploadName = strings.Replace(fileUploadName, fileUploadExtension, "", -1)
+	}
+
+	// check if file is exist
+	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep %s | wc -l", folderToView, fileUploadName+fileUploadExtension)
+	countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
+	if countFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				countFileError.Error(),
+			),
+		)
+		return
+	}
+	numberOfFile, numberOfFileIntConvertError := strconv.Atoi(countFileStdOut)
+	if numberOfFileIntConvertError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CountFileError,
+				nil,
+				numberOfFileIntConvertError.Error(),
+			),
+		)
+		return
+	}
+
+	if numberOfFile > 0 {
+		fileUploadName += " (" + uuid.New().String() + ")"
+	}
+	finalFileNameToSave := fileUploadName + fileUploadExtension
+	finalFileLocation := folderToView + url.QueryEscape(finalFileNameToSave)
+
+	if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.SaveFileError,
+				nil,
+				saveUploadedFileError.Error(),
+			),
+		)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
+	folderToView := ""
+
+	if inputCurrentLocation == "" {
+		folderToView = log.EnsureTrailingSlash(systemRootFolder + ctx.Value(constant.UserIdLogKey).(string))
+	} else {
+		var currentLocationFromRequestPayload string
+		if strings.HasPrefix(inputCurrentLocation, "/") {
+			currentLocationFromRequestPayload = inputCurrentLocation[1:]
+		} else {
+			currentLocationFromRequestPayload = inputCurrentLocation
+		}
+		folderToView = log.EnsureTrailingSlash(systemRootFolder+ctx.Value(constant.UserIdLogKey).(string)) + currentLocationFromRequestPayload
+		folderToView = log.EnsureTrailingSlash(folderToView)
+	}
+	return folderToView
 }

@@ -98,10 +98,22 @@ var (
 	}
 	CreateFolderError = ErrorEnums{
 		ErrorCode:    1003,
-		ErrorMessage: "Can not create folder",
+		ErrorMessage: "Cannot create folder",
 	}
 	ListFolderError = ErrorEnums{
 		ErrorCode:    1004,
-		ErrorMessage: "Can not list folder",
+		ErrorMessage: "Cannot list folder",
+	}
+	EmptyFileInformationError = ErrorEnums{
+		ErrorCode:    1005,
+		ErrorMessage: "Empty file information",
+	}
+	CountFileError = ErrorEnums{
+		ErrorCode:    1006,
+		ErrorMessage: "Cannot count file",
+	}
+	SaveFileError = ErrorEnums{
+		ErrorCode:    1007,
+		ErrorMessage: "Cannot save file",
 	}
 )
