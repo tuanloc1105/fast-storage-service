@@ -36,7 +36,7 @@ export const ErrorHandlerStore = signalStore(
           summary: 'Error',
           detail: error.error.errorMessage,
         });
-        router.navigate(['/auth/login']);
+        router.navigate(['auth/login']);
       },
       handleError404: (error: HttpErrorResponse) => {
         patchState(store, {

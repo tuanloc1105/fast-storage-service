@@ -5,7 +5,7 @@ import {
   effect,
   inject,
 } from '@angular/core';
-import { AppStore } from '@app/store';
+import { AppStore, AuthStore } from '@app/store';
 import { getState } from '@ngrx/signals';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
@@ -20,12 +20,17 @@ import { TableModule } from 'primeng/table';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FolderDetailComponent {
-  readonly appStore = inject(AppStore);
+  readonly #appStore = inject(AppStore);
+  readonly #authStore = inject(AuthStore);
 
   constructor() {
     effect(() => {
-      const state = getState(this.appStore);
+      const state = getState(this.#appStore);
       console.log('FolderDetailComponent', state);
     });
+  }
+
+  public test() {
+    this.#authStore.getUserInfo();
   }
 }

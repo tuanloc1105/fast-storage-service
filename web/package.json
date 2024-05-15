@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
-    "serve:angular": "nx serve angular",
+    "serve:angular": "nx serve fast-storage",
     "serve:electron": "nx serve electron",
     "build:electron": "nx package electron"
   },
