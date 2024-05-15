@@ -14,7 +14,11 @@ func PrepareContext(c *gin.Context, isBypassCurrentUserCheck ...bool) (context.C
 	currentUser, isCurrentUserExist := GetCurrentUsername(c)
 	currentUserId, isCurrentUserIdExist := GetCurrentUserId(c)
 
-	if len(isBypassCurrentUserCheck) < 1 || !isBypassCurrentUserCheck[0] {
+	ctx = context.WithValue(ctx, constant.TraceIdLogKey, GetTraceId(c))
+
+	if len(isBypassCurrentUserCheck) > 0 && isBypassCurrentUserCheck[0] {
+		return ctx, true
+	} else {
 		if isCurrentUserExist != nil {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
@@ -41,10 +45,8 @@ func PrepareContext(c *gin.Context, isBypassCurrentUserCheck ...bool) (context.C
 		}
 		ctx = context.WithValue(ctx, constant.UsernameLogKey, *currentUser)
 		ctx = context.WithValue(ctx, constant.UserIdLogKey, *currentUserId)
+		return ctx, true
 	}
-	ctx = context.WithValue(ctx, constant.TraceIdLogKey, GetTraceId(c))
-
-	return ctx, true
 }
 
 func GetCurrentUsernameFromContextForInsertOrUpdateDataInDb(ctx context.Context) string {
