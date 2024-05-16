@@ -35,6 +35,14 @@ type UserAuthenticationLog struct {
 	AuthenticatedStatusDescription string     `json:"authenticatedStatusDescription" gorm:"column:authenticated_status_description"`
 }
 
+// type Test struct {
+// 	BaseEntity                     `gorm:"embedded" json:"baseInfo"`
+// 	Username                       string    `json:"username" gorm:"column:Username;not null"`
+// 	AuthenticatedAt                time.Time `json:"authenticatedAt" gorm:"column:authenticated_at;not null"`
+// 	AuthenticatedStatus            string    `json:"authenticatedStatus" gorm:"column:authenticated_status;not null"`
+// 	AuthenticatedStatusDescription string    `json:"authenticatedStatusDescription" gorm:"column:authenticated_status_description"`
+// }
+
 type Tabler interface {
 	TableName() string
 }
