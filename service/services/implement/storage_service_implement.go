@@ -326,44 +326,18 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
-	multipartForm, multipartFormError := c.MultipartForm()
-	if multipartFormError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.InternalFailure,
-				nil,
-				multipartFormError.Error(),
-			),
-		)
+	requestPayload := payload.DownloadFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
 		return
 	}
 
-	folderLocation := ""
-	folderLocationArray := multipartForm.Value["folderLocation"]
-	if len(folderLocationArray) > 0 {
-		folderLocation = folderLocationArray[0]
-	}
+	folderLocation := requestPayload.Request.LocationToDownload
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
-	fileNameToDownloadArray := multipartForm.Value["fileName"]
 
-	if len(fileNameToDownloadArray) < 1 {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.DownloadFileError,
-				nil,
-				"Empty file name to download",
-			),
-		)
-		return
-	}
-
-	fileNameToDownload := url.QueryEscape(fileNameToDownloadArray[0])
+	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToDownload)
 	c.Status(200)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
