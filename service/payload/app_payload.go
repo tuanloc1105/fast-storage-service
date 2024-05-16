@@ -46,6 +46,15 @@ type GetAllElementInSpecificDirectoryBody struct {
 	Request GetAllElementInSpecificDirectoryBodyValue `json:"request" binding:"required"`
 }
 
+type DownloadFileBodyValue struct {
+	LocationToDownload string `json:"locationToDownload" binding:"required"`
+	FileNameToDownload string `json:"fileNameToDownload" binding:"required"`
+}
+
+type DownloadFileBody struct {
+	Request DownloadFileBodyValue `json:"request" binding:"required"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`
