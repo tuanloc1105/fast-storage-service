@@ -23,6 +23,8 @@ type Permission struct {
 }
 
 type BodyLogWriter struct {
+	// embedded field. This concept allows one struct to include another struct (or an interface)
+	// as if it were a field, but with additional benefits such as method promotion and type embedding.
 	gin.ResponseWriter
 	body *bytes.Buffer
 }
@@ -47,8 +49,9 @@ func RequestLogger(c *gin.Context) {
 	body, _ := io.ReadAll(tee)
 	c.Request.Body = io.NopCloser(&buf)
 	dst := &bytes.Buffer{}
+	isPossibleToLogRequestPayload := true
 	if err := json.Compact(dst, body); err != nil && len(body) > 0 {
-		// panic(err)
+		isPossibleToLogRequestPayload = false
 	}
 
 	header := map[string][]string(c.Request.Header)
@@ -62,15 +65,26 @@ func RequestLogger(c *gin.Context) {
 			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, strings.Join(v, ", "))
 		}
 	}
+	var message string
+	if isPossibleToLogRequestPayload {
+		message = fmt.Sprintf(
+			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
+			headerString,
+			c.Request.RequestURI,
+			c.Request.Method,
+			c.Request.Proto,
+			dst.String(),
+		)
+	} else {
+		message = fmt.Sprintf(
+			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s",
+			headerString,
+			c.Request.RequestURI,
+			c.Request.Method,
+			c.Request.Proto,
+		)
+	}
 
-	message := fmt.Sprintf(
-		"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
-		headerString,
-		c.Request.RequestURI,
-		c.Request.Method,
-		c.Request.Proto,
-		dst.String(),
-	)
 	currentUser := "unknown"
 	claimFromGinContext, _ := c.Get("auth")
 	if claimFromGinContext != nil {
@@ -115,16 +129,31 @@ func ResponseLogger(c *gin.Context) {
 			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, strings.Join(v, ", "))
 		}
 	}
-
+	// (*blw).body = bytes.NewBufferString("") <=> blw.body = bytes.NewBufferString("")
+	responseSizeMB := bytesToMB(int32((*blw).Size()))
+	responseSizeKB := bytesToKB(int32((*blw).Size()))
 	statusCode := c.Writer.Status()
-	message := fmt.Sprintf(
-		"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- payload:\n\t%s",
-		strconv.Itoa(statusCode),
-		c.Request.Method,
-		c.Request.RequestURI,
-		headerString,
-		blw.body.String(),
-	)
+	var message string
+	if responseSizeKB > float64(100) {
+		message = fmt.Sprintf(
+			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB",
+			strconv.Itoa(statusCode),
+			c.Request.Method,
+			c.Request.RequestURI,
+			headerString,
+			responseSizeMB,
+		)
+	} else {
+		message = fmt.Sprintf(
+			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB\n\t- payload:\n\t%s",
+			strconv.Itoa(statusCode),
+			c.Request.Method,
+			c.Request.RequestURI,
+			headerString,
+			responseSizeMB,
+			blw.body.String(),
+		)
+	}
 	currentUser := "unknown"
 	claimFromGinContext, _ := c.Get("auth")
 	if claimFromGinContext != nil {
@@ -259,4 +288,14 @@ func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) bool {
 		return false
 	}
 	return true
+}
+
+func bytesToMB(bytes int32) float64 {
+	result := float64(bytes) / float64(constant.BytesInMB)
+	return result
+}
+
+func bytesToKB(bytes int32) float64 {
+	result := float64(bytes) / float64(constant.BytesInKB)
+	return result
 }

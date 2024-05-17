@@ -39,7 +39,7 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 	storageRouter.POST("/download_file",
 		utils.AuthenticationWithAuthorization([]string{}),
 		utils.RequestLogger,
-		// utils.ResponseLogger,
+		utils.ResponseLogger,
 		handler.DownloadFile,
 		utils.ErrorHandler)
 

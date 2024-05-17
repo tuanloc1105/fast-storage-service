@@ -338,12 +338,20 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
 
 	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToDownload)
+	finalFileName := ""
+	if unescapedFileName, unescapedFileNameError := url.QueryUnescape(fileNameToDownload); unescapedFileNameError == nil {
+		finalFileName = unescapedFileName
+	} else {
+		finalFileName = fileNameToDownload
+	}
 	c.Status(200)
+	c.Header("File-Name", finalFileName)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
 	c.Header("Content-Type", "application/octet-stream")
 	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	// c.File(folderToView + fileNameToDownload)
 }
 
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
