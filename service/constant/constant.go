@@ -125,4 +125,12 @@ var (
 		ErrorCode:    1009,
 		ErrorMessage: "File statictis error",
 	}
+	CheckMaximunStorageError = ErrorEnums{
+		ErrorCode:    1010,
+		ErrorMessage: "Check maximun storage error",
+	}
+	UploadFileSizeExceeds = ErrorEnums{
+		ErrorCode:    1011,
+		ErrorMessage: "Upload file size exceeds the limit",
+	}
 )

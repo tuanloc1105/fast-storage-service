@@ -2,8 +2,10 @@ package implement
 
 import (
 	"context"
+	"errors"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/log"
+	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
@@ -100,6 +102,19 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 		return
 	}
 	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
 
 	requestPayload := payload.GetAllElementInSpecificDirectoryBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
@@ -212,6 +227,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
 	multipartForm, multipartFormError := c.MultipartForm()
 	if multipartFormError != nil {
 		c.AbortWithStatusJSON(
@@ -254,6 +282,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	file := fileUpload[0]
 
 	fileUploadName := file.Filename
+
+	if checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, file.Size); checkUploadingFileSize != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.UploadFileSizeExceeds,
+				nil,
+				checkUploadingFileSize.Error(),
+			),
+		)
+		return
+	}
 
 	fileUploadExtension := filepath.Ext(file.Filename)
 
@@ -326,6 +367,19 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
 	requestPayload := payload.DownloadFileBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
 	if !isParseRequestPayloadSuccess {
@@ -370,4 +424,98 @@ func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurr
 		folderToView = log.EnsureTrailingSlash(folderToView)
 	}
 	return folderToView
+}
+
+func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
+	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
+		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
+			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
+			db.WithContext(ctx).Where(
+				model.UserStorageLimitationData{
+					Username: currentUsername,
+				},
+			).Find(&userStorageMaximunSizeFromDb)
+			if userStorageMaximunSizeFromDb.BaseEntity.Id != 0 {
+				return nil
+			} else {
+				baseEntity := utils.GenerateNewBaseEntity(ctx)
+				newUserStorageMaximunSizeToSaveToDb := model.UserStorageLimitationData{
+					BaseEntity:         baseEntity,
+					Username:           currentUsername,
+					MaximunStorageSize: 1,
+					StorageSizeUnit:    "GB",
+				}
+				saveDataResult := db.WithContext(ctx).Save(&newUserStorageMaximunSizeToSaveToDb)
+				return saveDataResult.Error
+			}
+		}
+		return errors.New("cannot convert current username data")
+	}
+	return errors.New("cannot determine current user")
+}
+
+func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB, systemRootFolder string, fileUploadingSize int64) error {
+	if fileUploadingSize == 0 {
+		return nil
+	}
+	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
+		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
+			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
+			db.WithContext(ctx).Where(
+				model.UserStorageLimitationData{
+					Username: currentUsername,
+				},
+			).Find(&userStorageMaximunSizeFromDb)
+			if userStorageMaximunSizeFromDb.BaseEntity.Id == 0 {
+				return errors.New("cannot check user storage limitation")
+			}
+			folderToCheckSize := systemRootFolder + ctx.Value(constant.UserIdLogKey).(string)
+			checkFolderSizeCommand := fmt.Sprintf("du -s %s", folderToCheckSize)
+			checkFolderSizeStdOut, _, checkFolderSizeError := utils.Shellout(ctx, checkFolderSizeCommand)
+			if checkFolderSizeError != nil {
+				return checkFolderSizeError
+			}
+			folderSizeInt64, convertFolderSizeToInt64Error := strconv.
+				ParseInt(
+					strings.Split(checkFolderSizeStdOut, "\t")[0],
+					10,
+					64,
+				)
+			if convertFolderSizeToInt64Error != nil {
+				return convertFolderSizeToInt64Error
+			}
+			userMaximunMbStorage := convertGBToMB(float64(int64(userStorageMaximunSizeFromDb.MaximunStorageSize)))
+			folderSizeMb := convertKBToMB(float64(folderSizeInt64))
+			fileUploadingSizeMb := convertBytesToMB(fileUploadingSize)
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"user storage information when uploading file\n\t- user maximun storage: %.7f\n\t- current storage size of user: %.7f\n\t- file uploading size: %.7f",
+				userMaximunMbStorage,
+				folderSizeMb,
+				fileUploadingSizeMb,
+			)
+			if folderSizeMb+fileUploadingSizeMb > userMaximunMbStorage {
+				return errors.New("no more space to store file")
+			}
+			return nil
+		}
+		return errors.New("cannot convert current username data")
+	}
+	return errors.New("cannot determine current user")
+}
+
+func convertKBToMB(kb float64) float64 {
+	const kbPerMB = 1024.0
+	return kb / kbPerMB
+}
+
+func convertGBToMB(gb float64) float64 {
+	const mbPerGB = 1024.0
+	return gb * mbPerGB
+}
+
+func convertBytesToMB(bytes int64) float64 {
+	const bytesPerMB = 1024 * 1024
+	return float64(bytes) / float64(bytesPerMB)
 }
