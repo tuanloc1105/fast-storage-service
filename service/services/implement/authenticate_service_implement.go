@@ -242,7 +242,7 @@ func (h AuthenticateHandler) GetNewToken(c *gin.Context) {
 
 func (h AuthenticateHandler) Logout(c *gin.Context) {
 
-	ctx, isSuccess := utils.PrepareContext(c)
+	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {
 		return
 	}
