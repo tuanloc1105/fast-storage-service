@@ -134,7 +134,7 @@ func ResponseLogger(c *gin.Context) {
 	responseSizeKB := bytesToKB(int32((*blw).Size()))
 	statusCode := c.Writer.Status()
 	var message string
-	if responseSizeKB > float64(100) {
+	if responseSizeKB > float64(10) {
 		message = fmt.Sprintf(
 			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB",
 			strconv.Itoa(statusCode),
