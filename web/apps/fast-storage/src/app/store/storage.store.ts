@@ -4,7 +4,7 @@ import {
   COLOR_STATUS_STORAGE,
   DEFAULT_STATUS_STORAGE_COLOR,
 } from '@app/shared/constant';
-import { Directory, StorageStatus } from '@app/shared/model';
+import { Directory, DirectoryRequest, StorageStatus } from '@app/shared/model';
 import { tapResponse } from '@ngrx/operators';
 import {
   patchState,
@@ -48,7 +48,7 @@ export const StorageStore = signalStore(
       return DEFAULT_STATUS_STORAGE_COLOR;
     }),
     directories: computed<TreeNode[]>(() => {
-      if (directory().length === 0) {
+      if (directory() === null || directory().length === 0) {
         return [];
       }
       return directory().map((dir, index) => ({
@@ -58,6 +58,7 @@ export const StorageStore = signalStore(
         icon: dir.type === 'folder' ? 'pi pi-fw pi-folder' : 'pi pi-fw pi-file',
         leaf: false,
         loading: false,
+        ...(dir.type === 'folder' && { children: [] }),
       }));
     }),
   })),
@@ -85,11 +86,11 @@ export const StorageStore = signalStore(
           })
         )
       ),
-      getDirectory: rxMethod<void>(
+      getDirectory: rxMethod<DirectoryRequest>(
         pipe(
-          switchMap(() => {
+          switchMap((payload) => {
             patchState(store, { isLoading: true });
-            return storageService.getDirectory().pipe(
+            return storageService.getDirectory(payload).pipe(
               tapResponse({
                 next: (res) => {
                   patchState(store, { directory: res.response });
