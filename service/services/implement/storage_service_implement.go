@@ -446,7 +446,65 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
 	c.Header("Content-Type", "application/octet-stream")
 	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
-	// c.File(folderToView + fileNameToDownload)
+}
+
+func (h StorageHandler) RemoveFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.RemoveFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	folderLocation := requestPayload.Request.LocationToRemove
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+
+	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToRemove)
+
+	removeFileCommand := fmt.Sprintf("rm -rf %s", folderToView+fileNameToDownload)
+
+	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RemoveFileError,
+				nil,
+				removeFileCommandError.Error(),
+			),
+		)
+		return
+	} else {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				nil,
+			),
+		)
+	}
 }
 
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {

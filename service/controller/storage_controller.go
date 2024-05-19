@@ -50,4 +50,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.DownloadFile,
 		utils.ErrorHandler)
 
+	storageRouter.POST("/remove_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.RemoveFile,
+		utils.ErrorHandler)
+
 }

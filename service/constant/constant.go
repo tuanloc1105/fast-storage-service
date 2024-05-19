@@ -133,4 +133,8 @@ var (
 		ErrorCode:    1011,
 		ErrorMessage: "Upload file size exceeds the limit",
 	}
+	RemoveFileError = ErrorEnums{
+		ErrorCode:    1012,
+		ErrorMessage: "Cannot remove file",
+	}
 )

@@ -8,4 +8,5 @@ type StorageService interface {
 	UploadFile(c *gin.Context)
 	DownloadFile(c *gin.Context)
 	UserStorageStatus(c *gin.Context)
+	RemoveFile(c *gin.Context)
 }
