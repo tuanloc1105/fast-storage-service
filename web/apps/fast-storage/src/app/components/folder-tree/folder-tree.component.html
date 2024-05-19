@@ -12,19 +12,22 @@
       ></p-button>
     </div>
     <p-tree
-      [value]="folderTreeStore.list()"
+      [value]="storageStore.directories()"
       styleClass="p-0"
-      selectionMode="single"
-      (selectionChange)="setSelectedFolder($event)"
+      loadingMode="icon"
+      (onNodeExpand)="onNodeExpand($event)"
     >
     </p-tree>
   </div>
   <div class="flex flex-col gap-3">
-    <p-meterGroup [value]="value()" labelPosition="start">
+    <p-meterGroup [value]="meter()" labelPosition="start">
       <ng-template pTemplate="label" let-totalPercent="totalPercent">
         <div class="flex justify-between">
           <span class="md:text-sm">Storage usage</span>
-          <span class="text-gray-500 md:text-sm">(230 MB / 1000 MB)</span>
+          <span class="text-gray-500 md:text-sm"
+            >{{ storageStore.status()?.used?.toFixed() }} MB /
+            {{ storageStore.status()?.maximunSize }} MB</span
+          >
         </div>
       </ng-template>
       <ng-template pTemplate="end">

@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import {
   FolderDetailComponent,
   FolderTreeComponent,
   SidebarComponent,
 } from '@app/components';
+import { StorageStore } from '@app/store';
 
 @Component({
   selector: 'app-layout',
@@ -22,4 +23,10 @@ import {
   </div>`,
   styles: [],
 })
-export class LayoutComponent {}
+export class LayoutComponent implements OnInit {
+  private readonly storageStore = inject(StorageStore);
+
+  ngOnInit(): void {
+    this.storageStore.getSystemStorageStatus();
+  }
+}

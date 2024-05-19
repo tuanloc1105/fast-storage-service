@@ -3,12 +3,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  effect,
   inject,
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '@app/store';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { lastValueFrom } from 'rxjs';
 import { LocalStorageJwtService } from '../services';
 
 @Component({
@@ -18,7 +18,7 @@ import { LocalStorageJwtService } from '../services';
   template: `<div class="flex h-screen">
     <div class="m-auto flex items-center flex-col">
       <p-progressSpinner ariaLabel="loading" />
-      @if(authStore.isRefreshing()) {
+      @if(authStore.tryRefreshingToken()) {
       <span>We're refreshing your credential</span>
       } @else {
       <span>Please wait while we checking your credential</span>
@@ -30,31 +30,31 @@ import { LocalStorageJwtService } from '../services';
 })
 export class GatewayComponent implements OnInit {
   public authStore = inject(AuthStore);
-  #router = inject(Router);
-  #localStorageService = inject(LocalStorageJwtService);
+  private readonly router = inject(Router);
+  private readonly localStorageService = inject(LocalStorageJwtService);
+
+  constructor() {
+    effect(
+      () => {
+        if (this.authStore.tryRefreshingToken()) {
+          this.localStorageService
+            .getRefreshToken()
+            .subscribe((refreshToken) => {
+              if (!refreshToken) {
+                this.router.navigateByUrl('/auth/login');
+              } else {
+                this.authStore.refreshToken({ request: { refreshToken } });
+              }
+            });
+        }
+      },
+      { allowSignalWrites: true }
+    );
+  }
 
   ngOnInit(): void {
-    if (this.authStore.isRefreshing()) {
-      this.refreshToken();
-    } else {
-      this.getUserInfo();
+    if (!this.authStore.tryRefreshingToken()) {
+      this.authStore.getUserInfo();
     }
-  }
-
-  async getUserInfo() {
-    const refreshToken = await lastValueFrom(
-      this.#localStorageService.getRefreshToken()
-    );
-    await this.authStore.getUserInfo().catch(() => {
-      if (refreshToken) {
-        this.refreshToken();
-      } else {
-        this.#router.navigate(['auth/login']);
-      }
-    });
-  }
-
-  async refreshToken() {
-    await this.authStore.refreshToken();
   }
 }

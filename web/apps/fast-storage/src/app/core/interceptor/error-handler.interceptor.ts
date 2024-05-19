@@ -25,9 +25,10 @@ export const errorHandlerInterceptor: HttpInterceptorFn = (req, next) => {
         error.status === 401
       ) {
         if (refresh_token) {
-          patchState(authStore, { isRefreshing: true });
+          patchState(authStore, { tryRefreshingToken: true });
           router.navigateByUrl('/app/initializing');
         }
+      } else {
         messageService.add({
           severity: 'error',
           summary: 'Error',

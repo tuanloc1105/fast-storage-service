@@ -1,25 +1,32 @@
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@app/data-access';
-import { LoginRequest, LogoutRequest } from '@app/shared/model';
+import {
+  GetNewTokenRequest,
+  LoginRequest,
+  LogoutRequest,
+  RegisterRequest,
+  UserInfoResponse,
+} from '@app/shared/model';
 import { LocalStorageJwtService } from '@app/shared/services';
 import { tapResponse } from '@ngrx/operators';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, lastValueFrom } from 'rxjs';
+import { MessageService } from 'primeng/api';
+import { pipe, switchMap } from 'rxjs';
 
 type AuthState = {
   isLoggedIn: boolean;
-  user: any | null;
+  user: UserInfoResponse | null;
   isLoading: boolean;
-  isRefreshing: boolean;
+  tryRefreshingToken: boolean;
 };
 
 const initialState: AuthState = {
   isLoggedIn: false,
   user: null,
   isLoading: false,
-  isRefreshing: false,
+  tryRefreshingToken: false,
 };
 
 export const AuthStore = signalStore(
@@ -30,51 +37,88 @@ export const AuthStore = signalStore(
       store,
       router = inject(Router),
       authService = inject(AuthService),
-      localStorageService = inject(LocalStorageJwtService)
+      localStorageService = inject(LocalStorageJwtService),
+      messageService = inject(MessageService)
     ) => ({
-      async getUserInfo() {
-        patchState(store, { isLoading: true });
-        try {
-          const info = await lastValueFrom(authService.getUserInfo());
-          patchState(store, { user: info, isLoggedIn: true });
-          router.navigate(['app']);
-        } catch {
-          patchState(store, { isLoggedIn: false });
-          return Promise.reject();
-        } finally {
-          patchState(store, { isLoading: false });
-        }
-      },
-      async refreshToken() {
-        const refreshToken = await lastValueFrom(
-          localStorageService.getRefreshToken()
-        );
-
-        if (!refreshToken) {
-          patchState(store, { isLoggedIn: false });
-          localStorageService.removeItem();
-          router.navigate(['auth/login']);
-          return Promise.reject();
-        }
-
-        patchState(store, { isRefreshing: true });
-        try {
-          const info = await lastValueFrom(
-            authService.getNewToken({ request: { refreshToken } })
-          );
-          patchState(store, { isRefreshing: false, isLoggedIn: true });
-          localStorageService.setItem({
-            access_token: info.response.accessToken,
-            refresh_token: info.response.refreshToken,
-          });
-          router.navigate(['app']);
-        } catch {
-          patchState(store, { isLoggedIn: false });
-          localStorageService.removeItem();
-          router.navigate(['auth/login']);
-          return Promise.reject();
-        }
-      },
+      getUserInfo: rxMethod<void>(
+        pipe(
+          switchMap(() => {
+            patchState(store, { isLoading: true });
+            return authService.getUserInfo().pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, { user: res.response, isLoggedIn: true });
+                  router.navigate(['app']);
+                },
+                error: () =>
+                  patchState(store, {
+                    isLoggedIn: false,
+                    tryRefreshingToken: true,
+                  }),
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      refreshToken: rxMethod<GetNewTokenRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return authService.getNewToken(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, {
+                    tryRefreshingToken: false,
+                    isLoggedIn: true,
+                  });
+                  localStorageService.setItem({
+                    access_token: res.response.accessToken,
+                    refresh_token: res.response.refreshToken,
+                  });
+                  router.navigate(['app']);
+                },
+                error: () => {
+                  patchState(store, {
+                    tryRefreshingToken: false,
+                    isLoggedIn: false,
+                  });
+                  localStorageService.removeItem();
+                  router.navigate(['auth/login']);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      register: rxMethod<RegisterRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return authService.register(payload).pipe(
+              tapResponse({
+                next: () => {
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'You have successfully registered',
+                    detail: 'Please check your email to verify your account',
+                  });
+                  router.navigate(['auth/login']);
+                },
+                error: () => {
+                  messageService.add({
+                    severity: 'error',
+                    summary: 'Error!',
+                    detail: 'Something went wrong',
+                  });
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
       login: rxMethod<LoginRequest>(
         pipe(
           switchMap((payload) => {
@@ -87,6 +131,13 @@ export const AuthStore = signalStore(
                     access_token: res.response.accessToken,
                     refresh_token: res.response.refreshToken,
                   });
+                  if (localStorageService.getIsFirstTime()?.is) {
+                    messageService.add({
+                      severity: 'success',
+                      summary: 'Welcome back!',
+                      detail: 'You have successfully logged in',
+                    });
+                  }
                   router.navigate(['app']);
                 },
                 error: () => patchState(store, { isLoggedIn: false }),
@@ -107,7 +158,10 @@ export const AuthStore = signalStore(
                   localStorageService.removeItem();
                   router.navigate(['auth/login']);
                 },
-                error: () => patchState(store, { isLoggedIn: false }),
+                error: () => {
+                  patchState(store, { isLoggedIn: false });
+                  localStorageService.removeItem();
+                },
                 finalize: () => patchState(store, { isLoading: false }),
               })
             );
