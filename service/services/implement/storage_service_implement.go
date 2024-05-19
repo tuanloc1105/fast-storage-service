@@ -475,6 +475,56 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 		return
 	}
 
+	// check if user is enable OTP
+	userOtpDataInDatabase := model.UsersOtpData{}
+
+	h.DB.WithContext(h.Ctx).Where(
+		model.UsersOtpData{
+			UserId: h.Ctx.Value(constant.UserIdLogKey).(string),
+		},
+	).Find(&userOtpDataInDatabase)
+
+	// if so, check the input otp before deleting the file or folder
+	if userOtpDataInDatabase.BaseEntity.Id != 0 {
+		if requestPayload.Request.OtpCredential == "" {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.OtpError,
+					nil,
+					"Otp is empty",
+				),
+			)
+			return
+		}
+		userCurrentOtp, otpGeneratorError := GenerateTotp(h.Ctx, userOtpDataInDatabase.UserOtpSecretData)
+		if otpGeneratorError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.OtpError,
+					nil,
+					otpGeneratorError.Error(),
+				),
+			)
+			return
+		}
+		log.WithLevel(constant.Info, h.Ctx, "Current OTP is %s", userCurrentOtp)
+		if userCurrentOtp != requestPayload.Request.OtpCredential {
+			c.AbortWithStatusJSON(
+				http.StatusForbidden,
+				utils.ReturnResponse(
+					c,
+					constant.WrongOtpError,
+					nil,
+				),
+			)
+			return
+		}
+	}
+
 	folderLocation := requestPayload.Request.LocationToRemove
 
 	systemRootFolder := log.GetSystemRootFolder()

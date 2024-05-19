@@ -56,8 +56,9 @@ type DownloadFileBody struct {
 }
 
 type RemoveFileBodyValue struct {
-	LocationToRemove string `json:"locationToRemove"`
+	LocationToRemove string `json:"locationToRemove" binding:"required"`
 	FileNameToRemove string `json:"fileNameToRemove"`
+	OtpCredential    string `json:"otpCredential"`
 }
 
 type RemoveFileBody struct {

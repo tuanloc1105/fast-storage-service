@@ -137,4 +137,12 @@ var (
 		ErrorCode:    1012,
 		ErrorMessage: "Cannot remove file",
 	}
+	OtpError = ErrorEnums{
+		ErrorCode:    1013,
+		ErrorMessage: "Otp error",
+	}
+	WrongOtpError = ErrorEnums{
+		ErrorCode:    1014,
+		ErrorMessage: "Wrong otp",
+	}
 )

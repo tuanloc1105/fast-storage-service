@@ -136,12 +136,13 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 
 }
 
-func (h TotpHandler) GenerateTotp(c *gin.Context) {
-
-	ctx, isSuccess := utils.PrepareContext(c)
-	if !isSuccess {
-		return
-	}
-	h.Ctx = ctx
-	utils.Shellout(h.Ctx, "java -jar additional_source_code/two-factor-auth.jar \"GENERATE_CURRENT_OTP\" \"VOFZHNG45ATPCO4K\"")
+func GenerateTotp(ctx context.Context, otpSecretKey string) (string, error) {
+	otpStdOut, _, otpError := utils.Shellout(
+		ctx,
+		fmt.Sprintf(
+			"java -jar additional_source_code/two-factor-auth.jar \"GENERATE_CURRENT_OTP\" \"%s\"",
+			otpSecretKey,
+		),
+	)
+	return otpStdOut, otpError
 }
