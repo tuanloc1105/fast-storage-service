@@ -15,10 +15,10 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
-  #http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   public getUserInfo(): Observable<CommonResponse<UserInfoResponse>> {
-    return this.#http.get<CommonResponse<UserInfoResponse>>(
+    return this.http.get<CommonResponse<UserInfoResponse>>(
       '/auth/get_user_info'
     );
   }
@@ -26,21 +26,21 @@ export class AuthService {
   public login(
     payload: LoginRequest
   ): Observable<CommonResponse<LoginResponse>> {
-    return this.#http.post<CommonResponse<LoginResponse>>(
+    return this.http.post<CommonResponse<LoginResponse>>(
       '/auth/login',
       payload
     );
   }
 
   public logout(payload: LogoutRequest): Observable<any> {
-    return this.#http.post('/auth/logout', payload);
+    return this.http.post('/auth/logout', payload);
   }
 
   public register(payload: RegisterRequest): Observable<any> {
-    return this.#http.post('/auth/register', payload);
+    return this.http.post('/auth/register', payload);
   }
 
   public getNewToken(payload: GetNewTokenRequest): Observable<any> {
-    return this.#http.post('/auth/get_new_token', payload);
+    return this.http.post('/auth/get_new_token', payload);
   }
 }
