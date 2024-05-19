@@ -8,3 +8,9 @@ export interface Directory {
   size: string;
   type: string;
 }
+
+export interface DirectoryRequest {
+  request: {
+    currentLocation: string;
+  };
+}

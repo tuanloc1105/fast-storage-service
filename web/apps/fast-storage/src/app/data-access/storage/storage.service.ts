@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Directory, StorageStatus } from '@app/shared/model';
+import { Directory, DirectoryRequest, StorageStatus } from '@app/shared/model';
 import { CommonResponse } from '@app/shared/model/common.model';
 import { Observable } from 'rxjs';
 
@@ -16,10 +16,12 @@ export class StorageService {
     );
   }
 
-  public getDirectory(): Observable<CommonResponse<Directory[]>> {
+  public getDirectory(
+    payload: DirectoryRequest
+  ): Observable<CommonResponse<Directory[]>> {
     return this.http.post<CommonResponse<Directory[]>>(
       '/storage/get_all_element_in_specific_directory',
-      {}
+      payload
     );
   }
 
