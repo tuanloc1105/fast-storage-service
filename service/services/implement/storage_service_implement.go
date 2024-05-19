@@ -95,6 +95,42 @@ func (h StorageHandler) SystemStorageStatus(c *gin.Context) {
 	)
 }
 
+func (h StorageHandler) UserStorageStatus(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	systemRootFolder := log.GetSystemRootFolder()
+
+	if maximunStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				checkStorageSizeError.Error(),
+			),
+		)
+		return
+	} else {
+		result := payload.UserStorageStatus{
+			MaximunSize: maximunStorageSize,
+			Used:        currentStorageSize,
+		}
+
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				result,
+			),
+		)
+	}
+}
+
 func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
@@ -283,7 +319,12 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	fileUploadName := file.Filename
 
-	if checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, file.Size); checkUploadingFileSize != nil {
+	if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
+		h.Ctx,
+		h.DB,
+		systemRootFolder,
+		file.Size,
+	); checkUploadingFileSize != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
@@ -454,10 +495,10 @@ func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
 	return errors.New("cannot determine current user")
 }
 
-func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB, systemRootFolder string, fileUploadingSize int64) error {
-	if fileUploadingSize == 0 {
-		return nil
-	}
+func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB, systemRootFolder string, fileUploadingSize int64) (float64, float64, error) {
+	// if fileUploadingSize == 0 {
+	// 	return 0, 0, nil
+	// }
 	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
 		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
 			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
@@ -467,13 +508,13 @@ func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB
 				},
 			).Find(&userStorageMaximunSizeFromDb)
 			if userStorageMaximunSizeFromDb.BaseEntity.Id == 0 {
-				return errors.New("cannot check user storage limitation")
+				return 0, 0, errors.New("cannot check user storage limitation")
 			}
 			folderToCheckSize := systemRootFolder + ctx.Value(constant.UserIdLogKey).(string)
 			checkFolderSizeCommand := fmt.Sprintf("du -s %s", folderToCheckSize)
 			checkFolderSizeStdOut, _, checkFolderSizeError := utils.Shellout(ctx, checkFolderSizeCommand)
 			if checkFolderSizeError != nil {
-				return checkFolderSizeError
+				return 0, 0, checkFolderSizeError
 			}
 			folderSizeInt64, convertFolderSizeToInt64Error := strconv.
 				ParseInt(
@@ -482,7 +523,7 @@ func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB
 					64,
 				)
 			if convertFolderSizeToInt64Error != nil {
-				return convertFolderSizeToInt64Error
+				return 0, 0, convertFolderSizeToInt64Error
 			}
 			userMaximunMbStorage := convertGBToMB(float64(int64(userStorageMaximunSizeFromDb.MaximunStorageSize)))
 			folderSizeMb := convertKBToMB(float64(folderSizeInt64))
@@ -496,13 +537,13 @@ func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB
 				fileUploadingSizeMb,
 			)
 			if folderSizeMb+fileUploadingSizeMb > userMaximunMbStorage {
-				return errors.New("no more space to store file")
+				return 0, 0, errors.New("no more space to store file")
 			}
-			return nil
+			return userMaximunMbStorage, folderSizeMb, nil
 		}
-		return errors.New("cannot convert current username data")
+		return 0, 0, errors.New("cannot convert current username data")
 	}
-	return errors.New("cannot determine current user")
+	return 0, 0, errors.New("cannot determine current user")
 }
 
 func convertKBToMB(kb float64) float64 {

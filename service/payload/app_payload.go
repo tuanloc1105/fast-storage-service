@@ -115,6 +115,11 @@ type SystemStorageStatus struct {
 	UseInPercentage string `json:"useInPercentage"`
 }
 
+type UserStorageStatus struct {
+	MaximunSize float64 `json:"maximunSize"`
+	Used        float64 `json:"used"`
+}
+
 type FileInformation struct {
 	Size string `json:"size"`
 	Name string `json:"name"`
