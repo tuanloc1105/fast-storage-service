@@ -125,4 +125,24 @@ var (
 		ErrorCode:    1009,
 		ErrorMessage: "File statictis error",
 	}
+	CheckMaximunStorageError = ErrorEnums{
+		ErrorCode:    1010,
+		ErrorMessage: "Check maximun storage error",
+	}
+	UploadFileSizeExceeds = ErrorEnums{
+		ErrorCode:    1011,
+		ErrorMessage: "Upload file size exceeds the limit",
+	}
+	RemoveFileError = ErrorEnums{
+		ErrorCode:    1012,
+		ErrorMessage: "Cannot remove file",
+	}
+	OtpError = ErrorEnums{
+		ErrorCode:    1013,
+		ErrorMessage: "Otp error",
+	}
+	WrongOtpError = ErrorEnums{
+		ErrorCode:    1014,
+		ErrorMessage: "Wrong otp",
+	}
 )

@@ -19,6 +19,10 @@ func MigrationAndInsertDate(db *gorm.DB) {
 	if userAuthenticationLogMigrateErr != nil {
 		panic(userAuthenticationLogMigrateErr)
 	}
+	userStorageLimitationDataMigrateErr := db.AutoMigrate(&model.UserStorageLimitationData{})
+	if userStorageLimitationDataMigrateErr != nil {
+		panic(userStorageLimitationDataMigrateErr)
+	}
 }
 
 func InsertData(db *gorm.DB) {
