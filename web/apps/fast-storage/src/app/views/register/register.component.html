@@ -1,0 +1,152 @@
+<div class="container mx-auto px-4 py-16 flex gap-20 justify-around">
+  <div class="flex flex-col gap-10">
+    <h1 class="mb-6">Fast Storage</h1>
+    <div class="flex gap-2">
+      <img
+        src="/assets/icons/check.svg"
+        alt="check"
+        class="w-5 h-5 text-primary-600"
+      />
+      <div class="flex flex-col gap-3">
+        <span class="text-xl font-bold leading-none">Get started quickly</span>
+        <span class="font-light text-slate-400"
+          >Integrate with developer-friendly APIs or choose low-code.</span
+        >
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <img src="/assets/icons/check.svg" alt="check" class="w-5 h-5" />
+      <div class="flex flex-col gap-3">
+        <span class="text-xl font-bold leading-none"
+          >Support any business model</span
+        >
+        <span class="font-light text-slate-400"
+          >Host code that you don't want to share with the world in
+          private.</span
+        >
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <img src="/assets/icons/check.svg" alt="check" class="w-5 h-5" />
+      <div class="flex flex-col gap-3">
+        <span class="text-xl font-bold leading-none"
+          >Join millions of businesses</span
+        >
+        <span class="font-light text-slate-400"
+          >Flowbite is trusted by ambitious startups and enterprises of every
+          size.</span
+        >
+      </div>
+    </div>
+  </div>
+  <p-card header="Create your Free Account">
+    <div class="flex gap-3 justify-between">
+      <p-button
+        label="Signup with Google"
+        icon="pi pi-google"
+        [outlined]="true"
+        severity="secondary"
+        [rounded]="true"
+      />
+      <p-button
+        label="Signup with Twitter"
+        icon="pi pi-twitter"
+        [outlined]="true"
+        severity="secondary"
+        [rounded]="true"
+      />
+    </div>
+
+    <p-divider align="center" type="dotted">
+      <b>or</b>
+    </p-divider>
+
+    <form
+      [formGroup]="registerForm"
+      (ngSubmit)="onSubmit()"
+      class="flex flex-col gap-2"
+    >
+      <div class="flex flex-col gap-2">
+        <label for="username">Username</label>
+        <input
+          pInputText
+          id="username"
+          aria-describedby="username-help"
+          formControlName="username"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="email">Email</label>
+        <input
+          pInputText
+          id="email"
+          aria-describedby="email-help"
+          formControlName="email"
+        />
+      </div>
+
+      <div class="flex gap-2">
+        <div class="flex flex-col gap-2">
+          <label for="firstName">First name</label>
+          <input
+            pInputText
+            id="firstName"
+            aria-describedby="firstName-help"
+            formControlName="firstName"
+          />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label for="lastName">Last name</label>
+          <input
+            pInputText
+            id="lastName"
+            aria-describedby="lastName-help"
+            formControlName="lastName"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="password">Password</label>
+        <p-password
+          formControlName="password"
+          [feedback]="false"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="confirmPassword">Confirm Password</label>
+        <p-password
+          formControlName="confirmPassword"
+          [feedback]="false"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+          id="confirmPassword"
+          aria-describedby="confirmPassword-help"
+        />
+        <small id="confirmPassword-help" class="text-red-500">
+          {{
+            registerForm.hasError('passwordMismatch') &&
+            registerForm.get('confirmPassword')?.dirty
+              ? 'Passwords must match'
+              : ''
+          }}
+        </small>
+      </div>
+
+      <p-button
+        label="Create an Account"
+        type="submit"
+        [disabled]="!registerForm.valid"
+        [loading]="authStore.isLoading()"
+        styleClass="w-full mt-5"
+      ></p-button>
+    </form>
+  </p-card>
+</div>

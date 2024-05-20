@@ -2,8 +2,10 @@ package implement
 
 import (
 	"context"
+	"errors"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/log"
+	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
@@ -93,6 +95,42 @@ func (h StorageHandler) SystemStorageStatus(c *gin.Context) {
 	)
 }
 
+func (h StorageHandler) UserStorageStatus(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	systemRootFolder := log.GetSystemRootFolder()
+
+	if maximunStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				checkStorageSizeError.Error(),
+			),
+		)
+		return
+	} else {
+		result := payload.UserStorageStatus{
+			MaximunSize: maximunStorageSize,
+			Used:        currentStorageSize,
+		}
+
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				result,
+			),
+		)
+	}
+}
+
 func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
@@ -100,6 +138,19 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 		return
 	}
 	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
 
 	requestPayload := payload.GetAllElementInSpecificDirectoryBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
@@ -212,6 +263,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
 	multipartForm, multipartFormError := c.MultipartForm()
 	if multipartFormError != nil {
 		c.AbortWithStatusJSON(
@@ -254,6 +318,24 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	file := fileUpload[0]
 
 	fileUploadName := file.Filename
+
+	if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
+		h.Ctx,
+		h.DB,
+		systemRootFolder,
+		file.Size,
+	); checkUploadingFileSize != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.UploadFileSizeExceeds,
+				nil,
+				checkUploadingFileSize.Error(),
+			),
+		)
+		return
+	}
 
 	fileUploadExtension := filepath.Ext(file.Filename)
 
@@ -326,50 +408,153 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
-	multipartForm, multipartFormError := c.MultipartForm()
-	if multipartFormError != nil {
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
-				constant.InternalFailure,
+				constant.CheckMaximunStorageError,
 				nil,
-				multipartFormError.Error(),
+				checkMaximunStorageError.Error(),
 			),
 		)
 		return
 	}
 
-	folderLocation := ""
-	folderLocationArray := multipartForm.Value["folderLocation"]
-	if len(folderLocationArray) > 0 {
-		folderLocation = folderLocationArray[0]
+	requestPayload := payload.DownloadFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
 	}
+
+	folderLocation := requestPayload.Request.LocationToDownload
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
-	fileNameToDownloadArray := multipartForm.Value["fileName"]
 
-	if len(fileNameToDownloadArray) < 1 {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.DownloadFileError,
-				nil,
-				"Empty file name to download",
-			),
-		)
-		return
+	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToDownload)
+	finalFileName := ""
+	if unescapedFileName, unescapedFileNameError := url.QueryUnescape(fileNameToDownload); unescapedFileNameError == nil {
+		finalFileName = unescapedFileName
+	} else {
+		finalFileName = fileNameToDownload
 	}
-
-	fileNameToDownload := url.QueryEscape(fileNameToDownloadArray[0])
 	c.Status(200)
+	c.Header("File-Name", finalFileName)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
 	c.Header("Content-Type", "application/octet-stream")
 	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+}
+
+func (h StorageHandler) RemoveFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.RemoveFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	// check if user is enable OTP
+	userOtpDataInDatabase := model.UsersOtpData{}
+
+	h.DB.WithContext(h.Ctx).Where(
+		model.UsersOtpData{
+			UserId: h.Ctx.Value(constant.UserIdLogKey).(string),
+		},
+	).Find(&userOtpDataInDatabase)
+
+	// if so, check the input otp before deleting the file or folder
+	if userOtpDataInDatabase.BaseEntity.Id != 0 {
+		if requestPayload.Request.OtpCredential == "" {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.OtpError,
+					nil,
+					"Otp is empty",
+				),
+			)
+			return
+		}
+		userCurrentOtp, otpGeneratorError := GenerateTotp(h.Ctx, userOtpDataInDatabase.UserOtpSecretData)
+		if otpGeneratorError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.OtpError,
+					nil,
+					otpGeneratorError.Error(),
+				),
+			)
+			return
+		}
+		log.WithLevel(constant.Info, h.Ctx, "Current OTP is %s", userCurrentOtp)
+		if userCurrentOtp != requestPayload.Request.OtpCredential {
+			c.AbortWithStatusJSON(
+				http.StatusForbidden,
+				utils.ReturnResponse(
+					c,
+					constant.WrongOtpError,
+					nil,
+				),
+			)
+			return
+		}
+	}
+
+	folderLocation := requestPayload.Request.LocationToRemove
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+
+	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToRemove)
+
+	removeFileCommand := fmt.Sprintf("rm -rf %s", folderToView+fileNameToDownload)
+
+	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RemoveFileError,
+				nil,
+				removeFileCommandError.Error(),
+			),
+		)
+		return
+	} else {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				nil,
+			),
+		)
+	}
 }
 
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
@@ -388,4 +573,98 @@ func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurr
 		folderToView = log.EnsureTrailingSlash(folderToView)
 	}
 	return folderToView
+}
+
+func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
+	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
+		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
+			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
+			db.WithContext(ctx).Where(
+				model.UserStorageLimitationData{
+					Username: currentUsername,
+				},
+			).Find(&userStorageMaximunSizeFromDb)
+			if userStorageMaximunSizeFromDb.BaseEntity.Id != 0 {
+				return nil
+			} else {
+				baseEntity := utils.GenerateNewBaseEntity(ctx)
+				newUserStorageMaximunSizeToSaveToDb := model.UserStorageLimitationData{
+					BaseEntity:         baseEntity,
+					Username:           currentUsername,
+					MaximunStorageSize: 1,
+					StorageSizeUnit:    "GB",
+				}
+				saveDataResult := db.WithContext(ctx).Save(&newUserStorageMaximunSizeToSaveToDb)
+				return saveDataResult.Error
+			}
+		}
+		return errors.New("cannot convert current username data")
+	}
+	return errors.New("cannot determine current user")
+}
+
+func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB, systemRootFolder string, fileUploadingSize int64) (float64, float64, error) {
+	// if fileUploadingSize == 0 {
+	// 	return 0, 0, nil
+	// }
+	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
+		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
+			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
+			db.WithContext(ctx).Where(
+				model.UserStorageLimitationData{
+					Username: currentUsername,
+				},
+			).Find(&userStorageMaximunSizeFromDb)
+			if userStorageMaximunSizeFromDb.BaseEntity.Id == 0 {
+				return 0, 0, errors.New("cannot check user storage limitation")
+			}
+			folderToCheckSize := systemRootFolder + ctx.Value(constant.UserIdLogKey).(string)
+			checkFolderSizeCommand := fmt.Sprintf("du -s %s", folderToCheckSize)
+			checkFolderSizeStdOut, _, checkFolderSizeError := utils.Shellout(ctx, checkFolderSizeCommand)
+			if checkFolderSizeError != nil {
+				return 0, 0, checkFolderSizeError
+			}
+			folderSizeInt64, convertFolderSizeToInt64Error := strconv.
+				ParseInt(
+					strings.Split(checkFolderSizeStdOut, "\t")[0],
+					10,
+					64,
+				)
+			if convertFolderSizeToInt64Error != nil {
+				return 0, 0, convertFolderSizeToInt64Error
+			}
+			userMaximunMbStorage := convertGBToMB(float64(int64(userStorageMaximunSizeFromDb.MaximunStorageSize)))
+			folderSizeMb := convertKBToMB(float64(folderSizeInt64))
+			fileUploadingSizeMb := convertBytesToMB(fileUploadingSize)
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"user storage information when uploading file\n\t- user maximun storage: %.7f\n\t- current storage size of user: %.7f\n\t- file uploading size: %.7f",
+				userMaximunMbStorage,
+				folderSizeMb,
+				fileUploadingSizeMb,
+			)
+			if folderSizeMb+fileUploadingSizeMb > userMaximunMbStorage {
+				return 0, 0, errors.New("no more space to store file")
+			}
+			return userMaximunMbStorage, folderSizeMb, nil
+		}
+		return 0, 0, errors.New("cannot convert current username data")
+	}
+	return 0, 0, errors.New("cannot determine current user")
+}
+
+func convertKBToMB(kb float64) float64 {
+	const kbPerMB = 1024.0
+	return kb / kbPerMB
+}
+
+func convertGBToMB(gb float64) float64 {
+	const mbPerGB = 1024.0
+	return gb * mbPerGB
+}
+
+func convertBytesToMB(bytes int64) float64 {
+	const bytesPerMB = 1024 * 1024
+	return float64(bytes) / float64(bytesPerMB)
 }

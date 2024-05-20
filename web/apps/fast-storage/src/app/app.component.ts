@@ -15,9 +15,9 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
   styles: [],
 })
 export class AppComponent implements OnInit {
-  #primengConfig = inject(PrimeNGConfig);
-  #localStorageJwtService = inject(LocalStorageJwtService);
-  #router = inject(Router);
+  private readonly primengConfig = inject(PrimeNGConfig);
+  private readonly localStorageJwtService = inject(LocalStorageJwtService);
+  private readonly router = inject(Router);
 
   constructor(translate: TranslateService) {
     // this language will be used as a fallback when a translation isn't found in the current language
@@ -28,19 +28,20 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.#primengConfig.ripple = true;
+    this.primengConfig.ripple = true;
     this.initApp();
   }
 
   private async initApp() {
     const accessToken = await lastValueFrom(
-      this.#localStorageJwtService.getAccessToken()
+      this.localStorageJwtService.getAccessToken()
     );
 
     if (accessToken) {
-      this.#router.navigate(['app/initializing']);
-    } else {
-      this.#router.navigate(['auth/login']);
+      this.router.navigate([
+        'app/initializing',
+        { returnUrl: location.pathname },
+      ]);
     }
   }
 }

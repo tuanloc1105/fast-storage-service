@@ -24,4 +24,12 @@ export const appRoutes: Route[] = [
       import('./views/login/login.component').then((m) => m.LoginComponent),
     canActivate: [noAuthGuard],
   },
+  {
+    path: 'auth/register',
+    loadComponent: () =>
+      import('./views/register/register.component').then(
+        (m) => m.RegisterComponent
+      ),
+    canActivate: [noAuthGuard],
+  },
 ];

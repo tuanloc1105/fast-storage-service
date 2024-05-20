@@ -35,6 +35,21 @@ type UserAuthenticationLog struct {
 	AuthenticatedStatusDescription string     `json:"authenticatedStatusDescription" gorm:"column:authenticated_status_description"`
 }
 
+type UserStorageLimitationData struct {
+	BaseEntity         BaseEntity `gorm:"embedded" json:"baseInfo"`
+	Username           string     `json:"username" gorm:"column:username;not null;unique"`
+	MaximunStorageSize int        `json:"maximunStorageSize" gorm:"column:maximun_storage_size;not null"`
+	StorageSizeUnit    string     `json:"storageSizeUnit" gorm:"column:storage_size_unit;not null"`
+}
+
+// type Test struct {
+// 	BaseEntity                     `gorm:"embedded" json:"baseInfo"`
+// 	Username                       string    `json:"username" gorm:"column:Username;not null"`
+// 	AuthenticatedAt                time.Time `json:"authenticatedAt" gorm:"column:authenticated_at;not null"`
+// 	AuthenticatedStatus            string    `json:"authenticatedStatus" gorm:"column:authenticated_status;not null"`
+// 	AuthenticatedStatusDescription string    `json:"authenticatedStatusDescription" gorm:"column:authenticated_status_description"`
+// }
+
 type Tabler interface {
 	TableName() string
 }
@@ -49,4 +64,8 @@ func (UsersOtpData) TableName() string {
 
 func (UserAuthenticationLog) TableName() string {
 	return "user_authentication_log"
+}
+
+func (UserStorageLimitationData) TableName() string {
+	return "user_storage_limitation_data"
 }

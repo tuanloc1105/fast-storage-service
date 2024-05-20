@@ -15,7 +15,8 @@ type ErrorEnums struct {
 }
 
 const BaseApiPath = "/fast_storage/api/v1"
-
+const BytesInMB int32 = 1024 * 1024
+const BytesInKB int32 = 1024
 const LogFileLocation = "fast_storage_service_log_%d_%d_%d.log"
 const DeltaPositive = 0.5
 const DeltaNegative = -0.5
@@ -123,5 +124,25 @@ var (
 	FileStatictisError = ErrorEnums{
 		ErrorCode:    1009,
 		ErrorMessage: "File statictis error",
+	}
+	CheckMaximunStorageError = ErrorEnums{
+		ErrorCode:    1010,
+		ErrorMessage: "Check maximun storage error",
+	}
+	UploadFileSizeExceeds = ErrorEnums{
+		ErrorCode:    1011,
+		ErrorMessage: "Upload file size exceeds the limit",
+	}
+	RemoveFileError = ErrorEnums{
+		ErrorCode:    1012,
+		ErrorMessage: "Cannot remove file",
+	}
+	OtpError = ErrorEnums{
+		ErrorCode:    1013,
+		ErrorMessage: "Otp error",
+	}
+	WrongOtpError = ErrorEnums{
+		ErrorCode:    1014,
+		ErrorMessage: "Wrong otp",
 	}
 )

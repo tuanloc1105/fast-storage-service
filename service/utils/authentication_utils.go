@@ -86,10 +86,14 @@ func VerifyJwtToken(ctx context.Context, token string) (TokenInformation, error)
 	username := ""
 	traceId := ""
 	if usernameFromContext != nil {
-		username = usernameFromContext.(string)
+		if usernameFromContextString, isUsernameFromContextAString := usernameFromContext.(string); isUsernameFromContextAString {
+			username = usernameFromContextString
+		}
 	}
 	if traceIdFromContext != nil {
-		traceId = traceIdFromContext.(string)
+		if traceIdFromContextString, isTraceIdFromContextAString := traceIdFromContext.(string); isTraceIdFromContextAString {
+			traceId = traceIdFromContextString
+		}
 	}
 
 	JsonToStruct(tokenOut, &result)

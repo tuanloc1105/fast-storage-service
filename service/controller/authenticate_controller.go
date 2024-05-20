@@ -36,7 +36,7 @@ func AuthenticateController(router *gin.Engine, db *gorm.DB) {
 		utils.ErrorHandler)
 
 	authenticateRouter.POST("/logout",
-		utils.AuthenticationWithAuthorization([]string{}),
+		// utils.AuthenticationWithAuthorization([]string{}),
 		utils.RequestLogger,
 		utils.ResponseLogger,
 		handler.Logout,
