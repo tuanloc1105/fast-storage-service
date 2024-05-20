@@ -9,22 +9,30 @@
         icon="pi pi-plus"
         [text]="true"
         size="small"
+        (click)="newFolderVisible = true"
       ></p-button>
     </div>
     <p-tree
-      [value]="folderTreeStore.list()"
+      [value]="storageStore.directories()"
       styleClass="p-0"
-      selectionMode="single"
-      (selectionChange)="setSelectedFolder($event)"
+      loadingMode="icon"
+      (onNodeExpand)="onNodeExpand($event)"
+      [(selection)]="selectedDocumentFolder"
+      (onNodeContextMenuSelect)="onTreeContextMenuSelect($event)"
+      [contextMenu]="cm"
     >
     </p-tree>
+    <p-contextMenu #cm [model]="folderContextMenu" />
   </div>
   <div class="flex flex-col gap-3">
-    <p-meterGroup [value]="value()" labelPosition="start">
+    <p-meterGroup [value]="meter()" labelPosition="start">
       <ng-template pTemplate="label" let-totalPercent="totalPercent">
         <div class="flex justify-between">
           <span class="md:text-sm">Storage usage</span>
-          <span class="text-gray-500 md:text-sm">(230 MB / 1000 MB)</span>
+          <span class="text-gray-500 md:text-sm"
+            >{{ storageStore.status()?.used?.toFixed() }} MB /
+            {{ storageStore.status()?.maximunSize }} MB</span
+          >
         </div>
       </ng-template>
       <ng-template pTemplate="end">
@@ -35,3 +43,34 @@
     </p-meterGroup>
   </div>
 </div>
+
+<p-dialog
+  header="Add new folder"
+  [modal]="true"
+  [(visible)]="newFolderVisible"
+  [style]="{ width: '25rem' }"
+  draggable="false"
+>
+  <div class="flex items-center gap-3 mb-3">
+    <label for="folder" class="font-semibold w-6rem">Folder name</label>
+    <input
+      pInputText
+      id="folder"
+      class="flex-auto"
+      autocomplete="off"
+      [(ngModel)]="newFolderName"
+    />
+  </div>
+  <div class="flex justify-end gap-2">
+    <p-button
+      label="Cancel"
+      severity="secondary"
+      (click)="newFolderVisible = false"
+    />
+    <p-button
+      label="Save"
+      (click)="addNewFolder()"
+      [disabled]="!newFolderName"
+    />
+  </div>
+</p-dialog>
