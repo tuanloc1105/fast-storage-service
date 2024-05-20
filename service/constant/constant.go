@@ -145,4 +145,8 @@ var (
 		ErrorCode:    1014,
 		ErrorMessage: "Wrong otp",
 	}
+	FolderNotExistError = ErrorEnums{
+		ErrorCode:    1015,
+		ErrorMessage: "Folder does not exist",
+	}
 )

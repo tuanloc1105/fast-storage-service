@@ -9,4 +9,5 @@ type StorageService interface {
 	DownloadFile(c *gin.Context)
 	UserStorageStatus(c *gin.Context)
 	RemoveFile(c *gin.Context)
+	CreateFolder(c *gin.Context)
 }

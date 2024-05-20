@@ -160,11 +160,12 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.CurrentLocation)
+	userRootFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, constant.EmptyString)
 
 	// check if use root folder is existing
-	if _, directoryStatusError := os.Stat(folderToView); os.IsNotExist(directoryStatusError) {
-		log.WithLevel(constant.Info, h.Ctx, "start to create folder %s", folderToView)
-		makeDirectoryAllError := os.MkdirAll(folderToView, 0755)
+	if _, directoryStatusError := os.Stat(userRootFolder); os.IsNotExist(directoryStatusError) {
+		log.WithLevel(constant.Info, h.Ctx, "start to create folder %s", userRootFolder)
+		makeDirectoryAllError := os.MkdirAll(userRootFolder, 0755)
 		if makeDirectoryAllError != nil {
 			c.AbortWithStatusJSON(
 				http.StatusInternalServerError,
@@ -185,9 +186,8 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				http.StatusInternalServerError,
 				utils.ReturnResponse(
 					c,
-					constant.CreateFolderError,
+					constant.FolderNotExistError,
 					nil,
-					listFileError.Error(),
 				),
 			)
 			return
@@ -253,6 +253,75 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func (h StorageHandler) CreateFolder(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.CreateFolderBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	if strings.Contains(requestPayload.Request.FolderToCreate, "/") || strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"input cannot contain / or \\",
+			),
+		)
+		return
+	}
+	folderToCreate := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.FolderToCreate)
+
+	// check if use root folder is existing
+	if _, directoryStatusError := os.Stat(folderToCreate); os.IsNotExist(directoryStatusError) {
+		log.WithLevel(constant.Info, h.Ctx, "start to create folder %s", folderToCreate)
+		makeDirectoryAllError := os.MkdirAll(folderToCreate, 0755)
+		if makeDirectoryAllError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.CreateFolderError,
+					nil,
+					makeDirectoryAllError.Error(),
+				),
+			)
+			return
+		}
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
 }
 
 func (h StorageHandler) UploadFile(c *gin.Context) {
