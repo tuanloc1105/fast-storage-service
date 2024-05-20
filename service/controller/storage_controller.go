@@ -57,4 +57,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.RemoveFile,
 		utils.ErrorHandler)
 
+	storageRouter.POST("/create_folder",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CreateFolder,
+		utils.ErrorHandler)
+
 }
