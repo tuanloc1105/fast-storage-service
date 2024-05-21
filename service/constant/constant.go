@@ -149,4 +149,16 @@ var (
 		ErrorCode:    1015,
 		ErrorMessage: "Folder does not exist",
 	}
+	FolderAlreadySecureError = ErrorEnums{
+		ErrorCode:    1016,
+		ErrorMessage: "Folder already secured",
+	}
+	InputOtpEmptyError = ErrorEnums{
+		ErrorCode:    1017,
+		ErrorMessage: "Input otp empty",
+	}
+	SecureFolderInvalidCredentialError = ErrorEnums{
+		ErrorCode:    1018,
+		ErrorMessage: "Cannot view folder due to wrong credential",
+	}
 )

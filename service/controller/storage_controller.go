@@ -64,4 +64,18 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.CreateFolder,
 		utils.ErrorHandler)
 
+	storageRouter.POST("/set_password_for_folder",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.SetPasswordForFolder,
+		utils.ErrorHandler)
+
+	storageRouter.POST("/check_secure_folder_status",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CheckSecureFolderStatus,
+		utils.ErrorHandler)
+
 }

@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -179,7 +180,23 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			return
 		}
 	}
-	listFileInDirectoryCommand := fmt.Sprintf("ls -lh %s", folderToView)
+
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, requestPayload.Request.Credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+
+	}
+
+	listFileInDirectoryCommand := fmt.Sprintf("ls -lh '%s'", folderToView)
 	if listFileStdout, _, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
 		if listFileError != nil {
 			c.AbortWithStatusJSON(
@@ -283,14 +300,14 @@ func (h StorageHandler) CreateFolder(c *gin.Context) {
 	}
 
 	systemRootFolder := log.GetSystemRootFolder()
-	if strings.Contains(requestPayload.Request.FolderToCreate, "/") || strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
+	if strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(
 				c,
 				constant.DataFormatError,
 				nil,
-				"input cannot contain / or \\",
+				"input cannot contain \\",
 			),
 		)
 		return
@@ -366,8 +383,25 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		folderLocation = folderLocationArray[0]
 	}
 
+	credential := multipartForm.Value["credential"]
+
 	systemRootFolder := log.GetSystemRootFolder()
-	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	folderToSaveFile := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, credential[0])
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+
+	}
 
 	fileUpload := multipartForm.File["file"]
 
@@ -413,7 +447,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 
 	// check if file is exist
-	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToView, fileUploadName+fileUploadExtension)
+	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToSaveFile, fileUploadName+fileUploadExtension)
 	countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
 	if countFileError != nil {
 		c.AbortWithStatusJSON(
@@ -445,7 +479,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		fileUploadName += " (" + uuid.New().String() + ")"
 	}
 	finalFileNameToSave := fileUploadName + fileUploadExtension
-	finalFileLocation := folderToView + url.QueryEscape(finalFileNameToSave)
+	finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
 
 	if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
 		c.AbortWithStatusJSON(
@@ -500,6 +534,20 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, requestPayload.Request.Credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+
+	}
 
 	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToDownload)
 	finalFileName := ""
@@ -544,60 +592,37 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 		return
 	}
 
-	// check if user is enable OTP
-	userOtpDataInDatabase := model.UsersOtpData{}
-
-	h.DB.WithContext(h.Ctx).Where(
-		model.UsersOtpData{
-			UserId: h.Ctx.Value(constant.UserIdLogKey).(string),
-		},
-	).Find(&userOtpDataInDatabase)
-
-	// if so, check the input otp before deleting the file or folder
-	if userOtpDataInDatabase.BaseEntity.Id != 0 {
-		if requestPayload.Request.OtpCredential == "" {
-			c.AbortWithStatusJSON(
-				http.StatusBadRequest,
-				utils.ReturnResponse(
-					c,
-					constant.OtpError,
-					nil,
-					"Otp is empty",
-				),
-			)
-			return
-		}
-		userCurrentOtp, otpGeneratorError := GenerateTotp(h.Ctx, userOtpDataInDatabase.UserOtpSecretData)
-		if otpGeneratorError != nil {
-			c.AbortWithStatusJSON(
-				http.StatusBadRequest,
-				utils.ReturnResponse(
-					c,
-					constant.OtpError,
-					nil,
-					otpGeneratorError.Error(),
-				),
-			)
-			return
-		}
-		log.WithLevel(constant.Info, h.Ctx, "Current OTP is %s", userCurrentOtp)
-		if userCurrentOtp != requestPayload.Request.OtpCredential {
-			c.AbortWithStatusJSON(
-				http.StatusForbidden,
-				utils.ReturnResponse(
-					c,
-					constant.WrongOtpError,
-					nil,
-				),
-			)
-			return
-		}
+	if errorEnums, handleOtpError := handleCheckUserOtp(h.Ctx, h.DB, requestPayload.Request.OtpCredential); handleOtpError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				errorEnums,
+				nil,
+				handleOtpError.Error(),
+			),
+		)
+		return
 	}
 
 	folderLocation := requestPayload.Request.LocationToRemove
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, requestPayload.Request.Credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+
+	}
 
 	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToRemove)
 
@@ -624,6 +649,199 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 			),
 		)
 	}
+}
+
+func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.SetPasswordForFolderBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToSecure := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
+
+	if requestPayload.Request.CredentialType != "OTP" && requestPayload.Request.CredentialType != "PASSWORD" {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`credentialType` is invalid. only accept `OTP` or `PASSWORD`",
+			),
+		)
+		return
+	}
+
+	if requestPayload.Request.CredentialType == "PASSWORD" && requestPayload.Request.Credential == "" {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`credentialType` is `PASSWORD`. a credential must be sent in input",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(requestPayload.Request.Folder, "/") || strings.Contains(requestPayload.Request.Folder, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"input cannot contain / or \\",
+			),
+		)
+		return
+	}
+
+	if _, directoryStatusError := os.Stat(folderToSecure); os.IsNotExist(directoryStatusError) {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+				fmt.Sprintf("`%s` does not exist. %s", folderToSecure, directoryStatusError.Error()),
+			),
+		)
+		return
+	}
+
+	userFolderPasswordInDatabase := model.UserFolderCredential{}
+	h.DB.WithContext(h.Ctx).Where(model.UserFolderCredential{
+		Username:  h.Ctx.Value(constant.UsernameLogKey).(string),
+		Directory: folderToSecure,
+	},
+	).
+		Find(&userFolderPasswordInDatabase)
+
+	if userFolderPasswordInDatabase.BaseEntity.Id != 0 {
+		c.JSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.FolderAlreadySecureError,
+				nil,
+			),
+		)
+		return
+	}
+
+	utils.EncryptPasswordPointer(&requestPayload.Request.Credential)
+	baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+	userPasswordCredential := model.UserFolderCredential{
+		BaseEntity:               baseEntity,
+		Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
+		Directory:                folderToSecure,
+		Credential:               requestPayload.Request.Credential,
+		CredentialType:           requestPayload.Request.CredentialType,
+		LastFolderActivitiesTime: baseEntity.CreatedAt,
+	}
+
+	h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.CheckSecureFolderStatusBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToSecure := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
+
+	currentTime := time.Now()
+
+	secureFolderData := []model.UserFolderCredential{}
+	folderSecureDataMatchWithInputFolder := model.UserFolderCredential{}
+
+	h.DB.WithContext(h.Ctx).Where(
+		model.UserFolderCredential{
+			Username: ctx.Value(constant.UsernameLogKey).(string),
+		},
+	).Find(&secureFolderData)
+
+	for _, userFolderCredentialElement := range secureFolderData {
+		if userFolderCredentialElement.Directory == folderToSecure || strings.Contains(folderToSecure, userFolderCredentialElement.Directory) {
+			folderSecureDataMatchWithInputFolder = userFolderCredentialElement
+			break
+		}
+	}
+
+	if folderSecureDataMatchWithInputFolder.BaseEntity.Id == 0 || currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				true,
+			),
+		)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			false,
+		),
+	)
 }
 
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
@@ -721,6 +939,51 @@ func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB
 		return 0, 0, errors.New("cannot convert current username data")
 	}
 	return 0, 0, errors.New("cannot determine current user")
+}
+
+func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, folderToCheck, credential string) error {
+
+	currentTime := time.Now()
+	secureFolderData := []model.UserFolderCredential{}
+	folderSecureDataMatchWithInputFolder := model.UserFolderCredential{}
+
+	db.WithContext(ctx).Where(
+		model.UserFolderCredential{
+			Username: ctx.Value(constant.UsernameLogKey).(string),
+		},
+	).Find(&secureFolderData)
+
+	isInputFolderSecured := false
+
+	for _, userFolderCredentialElement := range secureFolderData {
+		if userFolderCredentialElement.Directory == folderToCheck || strings.Contains(folderToCheck, userFolderCredentialElement.Directory) {
+			isInputFolderSecured = true
+			folderSecureDataMatchWithInputFolder = userFolderCredentialElement
+			break
+		}
+	}
+
+	if !isInputFolderSecured {
+		return nil
+	}
+
+	// check folder activity
+	if currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
+		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
+		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
+	}
+
+	// check folder credential
+	if folderSecureDataMatchWithInputFolder.CredentialType == "OTP" {
+		if _, handleOtpError := handleCheckUserOtp(ctx, db, credential); handleOtpError != nil {
+			return handleOtpError
+		}
+	} else {
+		if comparePasswordError := utils.ComparePassword(credential, folderSecureDataMatchWithInputFolder.Credential); comparePasswordError != nil {
+			return comparePasswordError
+		}
+	}
+	return nil
 }
 
 func convertKBToMB(kb float64) float64 {

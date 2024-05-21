@@ -42,6 +42,15 @@ type UserStorageLimitationData struct {
 	StorageSizeUnit    string     `json:"storageSizeUnit" gorm:"column:storage_size_unit;not null"`
 }
 
+type UserFolderCredential struct {
+	BaseEntity               BaseEntity `gorm:"embedded" json:"baseInfo"`
+	Username                 string     `json:"username" gorm:"column:username;not null"`
+	Directory                string     `json:"directory" gorm:"column:directory;not null"`
+	Credential               string     `json:"credential" gorm:"column:credential;not null"`                                // bcrypted password, empty string if credential type is OTP
+	CredentialType           string     `json:"credentialType" gorm:"column:credential_type;not null"`                       // OTP or PASSWORD
+	LastFolderActivitiesTime time.Time  `json:"lastFolderActivitiesTime" gorm:"column:last_folder_activities_time;not null"` // folder idle time is 5 minutes last, if exceed then user have to be enter password again to view folder content
+}
+
 // type Test struct {
 // 	BaseEntity                     `gorm:"embedded" json:"baseInfo"`
 // 	Username                       string    `json:"username" gorm:"column:Username;not null"`
@@ -68,4 +77,8 @@ func (UserAuthenticationLog) TableName() string {
 
 func (UserStorageLimitationData) TableName() string {
 	return "user_storage_limitation_data"
+}
+
+func (UserFolderCredential) TableName() string {
+	return "user_folder_credential"
 }

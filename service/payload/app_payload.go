@@ -40,6 +40,7 @@ type LogoutBody struct {
 
 type GetAllElementInSpecificDirectoryBodyValue struct {
 	CurrentLocation string `json:"currentLocation"`
+	Credential      string `json:"credential"`
 }
 
 type GetAllElementInSpecificDirectoryBody struct {
@@ -49,6 +50,7 @@ type GetAllElementInSpecificDirectoryBody struct {
 type DownloadFileBodyValue struct {
 	LocationToDownload string `json:"locationToDownload" binding:"required"`
 	FileNameToDownload string `json:"fileNameToDownload" binding:"required"`
+	Credential         string `json:"credential"`
 }
 
 type DownloadFileBody struct {
@@ -59,6 +61,7 @@ type RemoveFileBodyValue struct {
 	LocationToRemove string `json:"locationToRemove" binding:"required"`
 	FileNameToRemove string `json:"fileNameToRemove"`
 	OtpCredential    string `json:"otpCredential"`
+	Credential       string `json:"credential"`
 }
 
 type RemoveFileBody struct {
@@ -71,6 +74,24 @@ type CreateFolderBodyValue struct {
 
 type CreateFolderBody struct {
 	Request CreateFolderBodyValue `json:"request" binding:"required"`
+}
+
+type SetPasswordForFolderBodyValue struct {
+	Folder         string `json:"folder" binding:"required"`
+	CredentialType string `json:"credentialType" binding:"required"`
+	Credential     string `json:"credential"`
+}
+
+type SetPasswordForFolderBody struct {
+	Request SetPasswordForFolderBodyValue `json:"request" binding:"required"`
+}
+
+type CheckSecureFolderStatusBodyValue struct {
+	Folder string `json:"folder" binding:"required"`
+}
+
+type CheckSecureFolderStatusBody struct {
+	Request CheckSecureFolderStatusBodyValue `json:"request" binding:"required"`
 }
 
 type ProtocolOpenidConnectTokenResponse struct {
