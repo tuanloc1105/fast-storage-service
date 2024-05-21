@@ -65,6 +65,14 @@ type RemoveFileBody struct {
 	Request RemoveFileBodyValue `json:"request" binding:"required"`
 }
 
+type CreateFolderBodyValue struct {
+	FolderToCreate string `json:"folderToCreate" binding:"required"`
+}
+
+type CreateFolderBody struct {
+	Request CreateFolderBodyValue `json:"request" binding:"required"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`
