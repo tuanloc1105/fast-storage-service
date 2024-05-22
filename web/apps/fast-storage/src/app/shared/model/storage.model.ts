@@ -14,3 +14,14 @@ export interface DirectoryRequest {
     currentLocation: string;
   };
 }
+
+export interface CreateFolderRequest {
+  request: {
+    folderToCreate: string;
+  };
+}
+
+export interface UploadFileRequest {
+  file: File;
+  folderLocation: string;
+}

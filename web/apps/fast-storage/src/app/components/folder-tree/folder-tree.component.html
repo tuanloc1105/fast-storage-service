@@ -6,20 +6,22 @@
       >
       <p-button
         label="New folder"
-        icon="pi pi-plus"
+        icon="pi pi-folder-plus"
         [text]="true"
         size="small"
         (click)="newFolderVisible = true"
       ></p-button>
     </div>
     <p-tree
-      [value]="storageStore.directories()"
       styleClass="p-0"
       loadingMode="icon"
-      (onNodeExpand)="onNodeExpand($event)"
-      [(selection)]="selectedDocumentFolder"
-      (onNodeContextMenuSelect)="onTreeContextMenuSelect($event)"
       [contextMenu]="cm"
+      [value]="storageStore.directories()"
+      selectionMode="single"
+      [(selection)]="selectedDocumentFolder"
+      (selectionChange)="onNodeSelect($event)"
+      (onNodeContextMenuSelect)="onTreeContextMenuSelect($event)"
+      (onNodeExpand)="onNodeExpand($event)"
     >
     </p-tree>
     <p-contextMenu #cm [model]="folderContextMenu" />
@@ -65,12 +67,13 @@
     <p-button
       label="Cancel"
       severity="secondary"
-      (click)="newFolderVisible = false"
+      (click)="closeNewFolderDialog()"
     />
     <p-button
       label="Save"
       (click)="addNewFolder()"
       [disabled]="!newFolderName"
+      [loading]="storageStore.isLoading()"
     />
   </div>
 </p-dialog>

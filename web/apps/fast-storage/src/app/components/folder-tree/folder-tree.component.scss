@@ -1,3 +1,7 @@
 ::ng-deep .p-tree .p-tree-container .p-treenode .p-treenode-content {
   padding: unset;
 }
+
+::ng-deep .p-menuitem-text:hover {
+  color: #22d3ee;
+}
