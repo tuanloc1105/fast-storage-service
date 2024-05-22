@@ -2,35 +2,50 @@ import { JsonPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  OnInit,
   effect,
   inject,
 } from '@angular/core';
-import { AppStore, AuthStore } from '@app/store';
-import { getState } from '@ngrx/signals';
+import { Directory } from '@app/shared/model';
+import { StorageStore } from '@app/store';
+import { patchState } from '@ngrx/signals';
+import { MenuItem } from 'primeng/api';
+import { BreadcrumbItemClickEvent, BreadcrumbModule } from 'primeng/breadcrumb';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 
 @Component({
   selector: 'app-folder-detail',
   standalone: true,
-  imports: [ButtonModule, JsonPipe, TableModule],
+  imports: [ButtonModule, JsonPipe, BreadcrumbModule, TableModule],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
   providers: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class FolderDetailComponent {
-  readonly #appStore = inject(AppStore);
-  readonly #authStore = inject(AuthStore);
+export class FolderDetailComponent implements OnInit {
+  public storageStore = inject(StorageStore);
+
+  public home: MenuItem | undefined;
+  public selectedDirectory: Directory | null = null;
 
   constructor() {
     effect(() => {
-      const state = getState(this.#appStore);
-      console.log('FolderDetailComponent', state);
+      console.log(this.storageStore.breadcrumb());
     });
   }
 
-  public test() {
-    this.#authStore.getUserInfo();
+  ngOnInit(): void {
+    this.home = { icon: 'pi pi-home' };
+  }
+
+  public handleBreadcrumb(event: BreadcrumbItemClickEvent): void {
+    const item = event.item.label;
+    const index = this.storageStore
+      .breadcrumb()
+      .findIndex((b) => b.label === item);
+    patchState(this.storageStore, {
+      breadcrumb: this.storageStore.breadcrumb().slice(0, index + 1),
+    });
   }
 }

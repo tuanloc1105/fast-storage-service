@@ -4,7 +4,7 @@ import {
   COLOR_STATUS_STORAGE,
   DEFAULT_STATUS_STORAGE_COLOR,
 } from '@app/shared/constant';
-import { Directory, DirectoryRequest, StorageStatus } from '@app/shared/model';
+import { Directory, StorageStatus, UploadFileRequest } from '@app/shared/model';
 import { tapResponse } from '@ngrx/operators';
 import {
   patchState,
@@ -14,25 +14,35 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { MessageService, TreeNode } from 'primeng/api';
+import { MenuItem, MessageService, TreeNode } from 'primeng/api';
 import { pipe, switchMap } from 'rxjs';
 
 type StorageState = {
   status: StorageStatus | null;
-  directory: Directory[];
+  allDirectorys: Directory[];
+  subMenuDirectory: Directory[];
   isLoading: boolean;
+  hasNewFolder: boolean;
+  hasNewFile: boolean;
+  breadcrumb: MenuItem[];
+  detailFolder: Directory[];
 };
 
 const initialState: StorageState = {
   status: null,
-  directory: [],
+  allDirectorys: [],
+  subMenuDirectory: [],
   isLoading: false,
+  hasNewFolder: false,
+  hasNewFile: false,
+  breadcrumb: [],
+  detailFolder: [],
 };
 
 export const StorageStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withComputed(({ status, directory }) => ({
+  withComputed(({ status, allDirectorys }) => ({
     percentage: computed(() => {
       return ((status()?.used || 0) / (status()?.maximunSize || 0)) * 100;
     }),
@@ -48,11 +58,11 @@ export const StorageStore = signalStore(
       return DEFAULT_STATUS_STORAGE_COLOR;
     }),
     directories: computed<TreeNode[]>(() => {
-      if (directory() === null || directory().length === 0) {
+      if (allDirectorys() === null || allDirectorys().length === 0) {
         return [];
       }
-      return directory().map((dir, index) => ({
-        key: index.toString(),
+      return allDirectorys().map((dir) => ({
+        key: dir.name,
         label: dir.name,
         data: dir,
         icon: dir.type === 'folder' ? 'pi pi-fw pi-folder' : 'pi pi-fw pi-file',
@@ -86,14 +96,14 @@ export const StorageStore = signalStore(
           })
         )
       ),
-      getDirectory: rxMethod<DirectoryRequest>(
+      getDirectory: rxMethod<string>(
         pipe(
-          switchMap((payload) => {
-            patchState(store, { isLoading: true });
-            return storageService.getDirectory(payload).pipe(
+          switchMap((location) => {
+            patchState(store, { isLoading: true, hasNewFolder: false });
+            return storageService.getDirectory(location).pipe(
               tapResponse({
                 next: (res) => {
-                  patchState(store, { directory: res.response });
+                  patchState(store, { allDirectorys: res.response });
                 },
                 error: (err) => {
                   console.log(err);
@@ -104,11 +114,36 @@ export const StorageStore = signalStore(
           })
         )
       ),
-      uploadFile: rxMethod<File>(
+      getDetailsDirectory: rxMethod<{
+        path: string;
+        type: 'subMenu' | 'detailFolder';
+      }>(
         pipe(
-          switchMap((file) => {
+          switchMap((payload) => {
             patchState(store, { isLoading: true });
-            return storageService.uploadFile(file).pipe(
+            return storageService.getDirectory(payload.path).pipe(
+              tapResponse({
+                next: (res) => {
+                  if (payload.type === 'subMenu') {
+                    patchState(store, { subMenuDirectory: res.response });
+                  } else {
+                    patchState(store, { detailFolder: res.response });
+                  }
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      uploadFile: rxMethod<UploadFileRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return storageService.uploadFile(payload).pipe(
               tapResponse({
                 next: (res) => {
                   messageService.add({
@@ -139,6 +174,29 @@ export const StorageStore = signalStore(
                   a.download = fileName;
                   a.click();
                   window.URL.revokeObjectURL(url);
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      createFolder: rxMethod<string>(
+        pipe(
+          switchMap((folderName) => {
+            patchState(store, { isLoading: true });
+            return storageService.createFolder(folderName).pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, { hasNewFolder: true });
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Folder created successfully',
+                  });
                 },
                 error: (err) => {
                   console.log(err);

@@ -1,6 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Directory, DirectoryRequest, StorageStatus } from '@app/shared/model';
+import {
+  CreateFolderRequest,
+  Directory,
+  DirectoryRequest,
+  StorageStatus,
+  UploadFileRequest,
+} from '@app/shared/model';
 import { CommonResponse } from '@app/shared/model/common.model';
 import { Observable } from 'rxjs';
 
@@ -17,17 +23,25 @@ export class StorageService {
   }
 
   public getDirectory(
-    payload: DirectoryRequest
+    location: string
   ): Observable<CommonResponse<Directory[]>> {
+    const payload: DirectoryRequest = {
+      request: {
+        currentLocation: location,
+      },
+    };
     return this.http.post<CommonResponse<Directory[]>>(
       '/storage/get_all_element_in_specific_directory',
       payload
     );
   }
 
-  public uploadFile(file: File): Observable<CommonResponse<any>> {
+  public uploadFile(
+    payload: UploadFileRequest
+  ): Observable<CommonResponse<any>> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', payload.file);
+    formData.append('folderLocation', payload.folderLocation);
     return this.http.post<CommonResponse<any>>(
       '/storage/upload_file',
       formData
@@ -37,6 +51,18 @@ export class StorageService {
   public downloadFile(fileName: string): Observable<CommonResponse<any>> {
     return this.http.get<CommonResponse<any>>(
       `/storage/download_file/${fileName}`
+    );
+  }
+
+  public createFolder(folderName: string): Observable<CommonResponse<any>> {
+    const payload: CreateFolderRequest = {
+      request: {
+        folderToCreate: folderName,
+      },
+    };
+    return this.http.post<CommonResponse<any>>(
+      '/storage/create_folder',
+      payload
     );
   }
 }
