@@ -10,4 +10,6 @@ type StorageService interface {
 	UserStorageStatus(c *gin.Context)
 	RemoveFile(c *gin.Context)
 	CreateFolder(c *gin.Context)
+	SetPasswordForFolder(c *gin.Context)
+	CheckSecureFolderStatus(c *gin.Context)
 }
