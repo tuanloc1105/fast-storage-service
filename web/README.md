@@ -60,3 +60,34 @@ It will show tasks that you can run with Nx.
 - [Join the community](https://nx.dev/community)
 - [Subscribe to the Nx Youtube Channel](https://www.youtube.com/@nxdevtools)
 - [Follow us on Twitter](https://twitter.com/nxdevtools)
+
+## Build guide
+
+### Requirement
+
+- [Nx Workspace](https://nx.dev/getting-started/installation)
+- [pnmP](https://pnpm.io/installation)
+- [Angular CLI](https://angular.io/cli)
+- [@nrwl/cli](https://www.npmjs.com/package/@nrwl/cli)
+
+### Build this project
+
+Install library
+
+```shell
+pnpm install
+```
+
+After finished, you can choose run with Angular or Electron
+
+- With Angular, run below command:
+
+```shell
+npm run serve:angular
+```
+
+- With Electron, run below command:
+
+```shell
+npm run serve:electron
+```
