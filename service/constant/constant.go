@@ -159,6 +159,6 @@ var (
 	}
 	SecureFolderInvalidCredentialError = ErrorEnums{
 		ErrorCode:    1018,
-		ErrorMessage: "Cannot view folder due to wrong credential",
+		ErrorMessage: "Cannot view secure folder due to wrong `PASSWORD` or `OTP`",
 	}
 )
