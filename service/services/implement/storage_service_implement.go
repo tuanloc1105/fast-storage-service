@@ -387,8 +387,12 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToSaveFile := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
-
-	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, credential[0])
+	var checkFolderCredentialError error = nil
+	if len(credential) == 0 {
+		checkFolderCredentialError = handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, "")
+	} else {
+		checkFolderCredentialError = handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, credential[0])
+	}
 	if checkFolderCredentialError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
