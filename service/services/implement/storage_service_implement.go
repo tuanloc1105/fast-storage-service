@@ -418,81 +418,82 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	file := fileUpload[0]
+	for _, file := range fileUpload {
+		fileUploadName := file.Filename
 
-	fileUploadName := file.Filename
+		if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
+			h.Ctx,
+			h.DB,
+			systemRootFolder,
+			file.Size,
+		); checkUploadingFileSize != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.UploadFileSizeExceeds,
+					nil,
+					checkUploadingFileSize.Error(),
+				),
+			)
+			return
+		}
 
-	if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
-		h.Ctx,
-		h.DB,
-		systemRootFolder,
-		file.Size,
-	); checkUploadingFileSize != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.UploadFileSizeExceeds,
-				nil,
-				checkUploadingFileSize.Error(),
-			),
-		)
-		return
+		fileUploadExtension := filepath.Ext(file.Filename)
+
+		if fileUploadExtension != "" {
+			fileUploadName = strings.Replace(fileUploadName, fileUploadExtension, "", -1)
+		}
+
+		// check if file is exist
+		countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToSaveFile, fileUploadName+fileUploadExtension)
+		countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
+		if countFileError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.InternalFailure,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+countFileError.Error(),
+				),
+			)
+			return
+		}
+		numberOfFile, numberOfFileIntConvertError := strconv.Atoi(countFileStdOut)
+		if numberOfFileIntConvertError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.CountFileError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+numberOfFileIntConvertError.Error(),
+				),
+			)
+			return
+		}
+
+		if numberOfFile > 0 {
+			fileUploadName += " (" + uuid.New().String() + ")"
+		}
+		finalFileNameToSave := fileUploadName + fileUploadExtension
+		finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
+
+		if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.SaveFileError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+saveUploadedFileError.Error(),
+				),
+			)
+			return
+		}
 	}
 
-	fileUploadExtension := filepath.Ext(file.Filename)
-
-	if fileUploadExtension != "" {
-		fileUploadName = strings.Replace(fileUploadName, fileUploadExtension, "", -1)
-	}
-
-	// check if file is exist
-	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToSaveFile, fileUploadName+fileUploadExtension)
-	countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
-	if countFileError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.InternalFailure,
-				nil,
-				countFileError.Error(),
-			),
-		)
-		return
-	}
-	numberOfFile, numberOfFileIntConvertError := strconv.Atoi(countFileStdOut)
-	if numberOfFileIntConvertError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.CountFileError,
-				nil,
-				numberOfFileIntConvertError.Error(),
-			),
-		)
-		return
-	}
-
-	if numberOfFile > 0 {
-		fileUploadName += " (" + uuid.New().String() + ")"
-	}
-	finalFileNameToSave := fileUploadName + fileUploadExtension
-	finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
-
-	if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.SaveFileError,
-				nil,
-				saveUploadedFileError.Error(),
-			),
-		)
-		return
-	}
 	c.JSON(
 		http.StatusOK,
 		utils.ReturnResponse(
