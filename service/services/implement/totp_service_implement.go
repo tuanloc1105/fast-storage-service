@@ -20,14 +20,6 @@ type TotpHandler struct {
 	Ctx context.Context
 }
 
-func generateSecret(ctx context.Context) (string, error) {
-	if generateSecretShellStd, _, generateSecretError := utils.Shellout(ctx, "java -jar additional_source_code/two-factor-auth.jar \"GENERATE_BASE32_SECRET\""); generateSecretError != nil {
-		return "", generateSecretError
-	} else {
-		return generateSecretShellStd, nil
-	}
-}
-
 func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 
 	ctx, isSuccess := utils.PrepareContext(c)
@@ -133,16 +125,4 @@ func (h TotpHandler) GenerateQrCode(c *gin.Context) {
 			}
 		}
 	}
-
-}
-
-func GenerateTotp(ctx context.Context, otpSecretKey string) (string, error) {
-	otpStdOut, _, otpError := utils.Shellout(
-		ctx,
-		fmt.Sprintf(
-			"java -jar additional_source_code/two-factor-auth.jar \"GENERATE_CURRENT_OTP\" \"%s\"",
-			otpSecretKey,
-		),
-	)
-	return otpStdOut, otpError
 }
