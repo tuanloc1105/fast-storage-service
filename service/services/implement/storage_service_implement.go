@@ -247,14 +247,29 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if strings.HasPrefix(elementDetail[0], "d") {
 						elementType = "folder"
 					}
-					fileName, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
+					fileNameWithExtension, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
 					if fileNameUnescapeError != nil {
-						fileName = ""
+						fileNameWithExtension = ""
 					}
-					fileInformation := payload.FileInformation{
-						Size: elementDetail[1],
-						Name: fileName,
-						Type: elementType,
+					var fileInformation payload.FileInformation
+					if elementType == "folder" {
+						fileInformation = payload.FileInformation{
+							Size: elementDetail[1],
+							Name: fileNameWithExtension,
+							Type: elementType,
+						}
+					} else {
+						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
+						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
+						if fileExtensionErrOut != "" || fileExtensionError != nil {
+							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred whilde get file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
+						}
+						fileInformation = payload.FileInformation{
+							Size:      elementDetail[1],
+							Name:      fileNameWithExtension,
+							Extension: strings.ToUpper(fileExtensionStdOut),
+							Type:      elementType,
+						}
 					}
 					listOfFileInformation = append(listOfFileInformation, fileInformation)
 				}
@@ -976,19 +991,25 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 	if currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
 		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
 		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
+		return nil
 	}
 
 	// check folder credential
+	var checkCredentialError error = nil
 	if folderSecureDataMatchWithInputFolder.CredentialType == "OTP" {
 		if _, handleOtpError := handleCheckUserOtp(ctx, db, credential); handleOtpError != nil {
-			return handleOtpError
+			checkCredentialError = handleOtpError
 		}
 	} else {
 		if comparePasswordError := utils.ComparePassword(credential, folderSecureDataMatchWithInputFolder.Credential); comparePasswordError != nil {
-			return comparePasswordError
+			checkCredentialError = comparePasswordError
 		}
 	}
-	return nil
+	if checkCredentialError == nil {
+		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
+		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
+	}
+	return checkCredentialError
 }
 
 func convertKBToMB(kb float64) float64 {
