@@ -251,26 +251,37 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if fileNameUnescapeError != nil {
 						fileNameWithExtension = ""
 					}
-					var fileInformation payload.FileInformation
-					if elementType == "folder" {
-						fileInformation = payload.FileInformation{
-							Size: elementDetail[1],
-							Name: fileNameWithExtension,
-							Type: elementType,
+					fileSize := elementDetail[1]
+
+					var fileInformation payload.FileInformation = payload.FileInformation{
+						Size: fileSize,
+						Name: fileNameWithExtension,
+						Type: elementType,
+					}
+
+					statCommand := fmt.Sprintf("stat '%s' | grep \"Modify\"", elementDetail[2])
+					statStdOut, statStdErr, statError := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommand, folderToView)
+					if statStdErr != "" || statError != nil {
+						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while get stat: \n- %s\n- %s", statStdErr, statError.Error())
+					}
+					if statStdOut != "" {
+						modifiedDateString := strings.Replace(statStdOut, "Modify: ", "", -1)
+						if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
+							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
+						} else {
+							fileInformation.LastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
 						}
-					} else {
+					}
+
+					if elementType == "file" {
 						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
 						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
 						if fileExtensionErrOut != "" || fileExtensionError != nil {
-							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred whilde get file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
+							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
 						}
-						fileInformation = payload.FileInformation{
-							Size:      elementDetail[1],
-							Name:      fileNameWithExtension,
-							Extension: strings.ToUpper(fileExtensionStdOut),
-							Type:      elementType,
-						}
+						fileInformation.Extension = strings.ToUpper(fileExtensionStdOut)
 					}
+
 					listOfFileInformation = append(listOfFileInformation, fileInformation)
 				}
 

@@ -160,8 +160,9 @@ type UserStorageStatus struct {
 }
 
 type FileInformation struct {
-	Size      string `json:"size"`
-	Name      string `json:"name"`
-	Extension string `json:"extension"`
-	Type      string `json:"type"`
+	Size             string `json:"size"`
+	Name             string `json:"name"`
+	Extension        string `json:"extension"`
+	LastModifiedDate string `json:"lastModifiedDate"`
+	Type             string `json:"type"`
 }
