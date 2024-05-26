@@ -6,7 +6,9 @@ export interface StorageStatus {
 export interface Directory {
   name: string;
   size: string;
-  type: string;
+  type: 'file' | 'folder';
+  extension: string;
+  lastModifiedDate: string;
 }
 
 export interface DirectoryRequest {
@@ -22,6 +24,21 @@ export interface CreateFolderRequest {
 }
 
 export interface UploadFileRequest {
-  file: File;
+  files: File[];
   folderLocation: string;
+}
+
+export interface DownloadFileRequest {
+  request: {
+    fileNameToDownload: string;
+    locationToDownload: string;
+  };
+}
+
+export interface RemoveFileRequest {
+  request: {
+    fileNameToRemove: string;
+    locationToRemove: string;
+    otpCredential?: string;
+  };
 }

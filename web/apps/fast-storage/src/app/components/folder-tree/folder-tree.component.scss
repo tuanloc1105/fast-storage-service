@@ -5,3 +5,9 @@
 ::ng-deep .p-menuitem-text:hover {
   color: #22d3ee;
 }
+
+::ng-deep .p-treenode-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

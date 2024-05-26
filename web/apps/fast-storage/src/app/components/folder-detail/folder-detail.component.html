@@ -1,4 +1,4 @@
-<div class="flex flex-col gap-3 h-full">
+<div class="flex flex-col gap-3 h-full relative folder-detail">
   <div class="flex items-center justify-between">
     <p-breadcrumb
       class="w-full"
@@ -7,7 +7,8 @@
       (onItemClick)="handleBreadcrumb($event)"
     />
     <div
-      class="flex items-center px-3 gap-3 ml-2 bg-[#18181b] rounded-md h-full"
+      class="flex items-center px-3 gap-3 ml-2 rounded-md h-full"
+      [ngClass]="{ 'bg-[#18181b]': appStore.isDarkMode() }"
     >
       <p-button
         label="Download"
@@ -31,35 +32,68 @@
       ></p-button>
     </div>
   </div>
-  <div class="h-full bg-[#18181b] rounded-md">
-    <div class="card">
-      <p-table
-        [value]="storageStore.detailFolder()"
-        [(selection)]="selectedDirectory"
-        dataKey="name"
-        [loading]="storageStore.isLoading()"
-      >
-        <ng-template pTemplate="header">
-          <tr>
-            <th style="width: 4rem"><p-tableHeaderCheckbox /></th>
-            <th>Name</th>
-            <th>Date modified</th>
-            <th>Type</th>
-            <th>Size</th>
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-directory>
-          <tr>
-            <td>
-              <p-tableCheckbox [value]="directory" />
-            </td>
-            <td>{{ directory.name }}</td>
-            <td>{{ directory.name }}</td>
-            <td>{{ directory.type }}</td>
-            <td>{{ directory.size }}</td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </div>
+  <div
+    class="h-full rounded-md"
+    [ngClass]="{ 'bg-[#18181b]': appStore.isDarkMode() }"
+  >
+    <p-table
+      [value]="storageStore.detailFolder()"
+      dataKey="name"
+      [contextMenu]="cm"
+      [(contextMenuSelection)]="selectedDirectory"
+      [loading]="storageStore.isLoading()"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 4rem"><p-tableHeaderCheckbox /></th>
+          <th>Name</th>
+          <th>Date modified</th>
+          <th>Type</th>
+          <th>Size</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-directory>
+        <tr
+          (dblclick)="retrieveDirectory(directory)"
+          [pContextMenuRow]="directory"
+        >
+          <td>
+            <p-tableCheckbox [value]="directory" />
+          </td>
+          <td>
+            <div class="flex items-center">
+              <img
+                [alt]="directory.name"
+                [src]="
+                  'assets/images/'
+                    | imageSrc
+                      : [
+                          directory.extension,
+                          directory.type === 'folder' ? true : false
+                        ]
+                "
+                width="15"
+                style="vertical-align: middle"
+              />
+              <span class="ml-2">{{ directory.name }}</span>
+            </div>
+          </td>
+          <td>{{ directory.lastModifiedDate }}</td>
+          <td>
+            {{ directory.extension ? directory.extension : directory.type }}
+          </td>
+          <td>{{ directory.size }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
   </div>
+  <p-speedDial
+    [disabled]="storageStore.breadcrumb().length === 0"
+    [model]="speedDialItems"
+    radius="120"
+    direction="up-left"
+    type="quarter-circle"
+    buttonClassName="p-button-success"
+  />
 </div>
+<p-contextMenu #cm [model]="tableContextMenu" />
