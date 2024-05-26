@@ -555,17 +555,36 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	requestPayload := payload.DownloadFileBody{}
-	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
-	if !isParseRequestPayloadSuccess {
+	// requestPayload := payload.DownloadFileBody{}
+	// isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	// if !isParseRequestPayloadSuccess {
+	// 	return
+	// }
+
+	// locationToDownload
+	// fileNameToDownload
+	// credential
+
+	folderLocation := c.Query("locationToDownload")
+	credential := c.Query("credential")
+	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
+
+	if folderLocation == "" || fileNameToDownloadFromRequest == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`folderLocation` and `fileNameToDownloadFromRequest` can not be empty",
+			),
+		)
 		return
 	}
 
-	folderLocation := requestPayload.Request.LocationToDownload
-
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
-	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, requestPayload.Request.Credential)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
 	if checkFolderCredentialError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
@@ -580,7 +599,7 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 
 	}
 
-	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToDownload)
+	fileNameToDownload := url.QueryEscape(fileNameToDownloadFromRequest)
 	finalFileName := ""
 	if unescapedFileName, unescapedFileNameError := url.QueryUnescape(fileNameToDownload); unescapedFileNameError == nil {
 		finalFileName = unescapedFileName
