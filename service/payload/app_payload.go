@@ -76,6 +76,25 @@ type CreateFolderBody struct {
 	Request CreateFolderBodyValue `json:"request" binding:"required"`
 }
 
+type RenameFolderBodyValue struct {
+	OldFolderLocationName string `json:"oldFolderLocationName" binding:"required"`
+	NewFolderLocationName string `json:"newFolderLocationName" binding:"required"`
+}
+
+type RenameFolderBody struct {
+	Request RenameFolderBodyValue `json:"request" binding:"required"`
+}
+
+type CreateFileBodyValue struct {
+	FolderToCreate   string `json:"folderToCreate" binding:"required"`
+	FileNameToCreate string `json:"fileNameToCreate" binding:"required"`
+	FileExtension    string `json:"fileExtension" binding:"required"`
+}
+
+type CreateFileBody struct {
+	Request CreateFileBodyValue `json:"request" binding:"required"`
+}
+
 type SetPasswordForFolderBodyValue struct {
 	Folder         string `json:"folder" binding:"required"`
 	CredentialType string `json:"credentialType" binding:"required"`

@@ -12,4 +12,6 @@ type StorageService interface {
 	CreateFolder(c *gin.Context)
 	SetPasswordForFolder(c *gin.Context)
 	CheckSecureFolderStatus(c *gin.Context)
+	CreateFile(c *gin.Context)
+	RenameFileOrFolder(c *gin.Context)
 }

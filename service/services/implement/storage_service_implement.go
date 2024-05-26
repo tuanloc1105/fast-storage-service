@@ -160,6 +160,19 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 		return
 	}
 
+	if strings.Contains(requestPayload.Request.CurrentLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.CurrentLocation)
 	userRootFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, constant.EmptyString)
@@ -211,8 +224,8 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			return
 		}
 	} else {
-		fmt.Println(listFileStdout)
-		if strings.Contains(listFileStdout, "total 0") {
+		lsCommandResultLineArray := strings.Split(listFileStdout, "\n")
+		if strings.Contains(listFileStdout, "total 0") && len(lsCommandResultLineArray) <= 1 {
 			c.JSON(
 				http.StatusOK,
 				utils.ReturnResponse(
@@ -325,6 +338,18 @@ func (h StorageHandler) CreateFolder(c *gin.Context) {
 	if !isParseRequestPayloadSuccess {
 		return
 	}
+	if strings.Contains(requestPayload.Request.FolderToCreate, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
 
 	systemRootFolder := log.GetSystemRootFolder()
 	if strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
@@ -358,6 +383,234 @@ func (h StorageHandler) CreateFolder(c *gin.Context) {
 			return
 		}
 	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) RenameFileOrFolder(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.RenameFolderBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if strings.Contains(requestPayload.Request.OldFolderLocationName, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+	if strings.Contains(requestPayload.Request.NewFolderLocationName, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	if strings.Contains(requestPayload.Request.OldFolderLocationName, "\\") || strings.Contains(requestPayload.Request.NewFolderLocationName, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`oldFolderLocationName` or `newFolderLocationName` cannot contain \\",
+			),
+		)
+		return
+	}
+	oldFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName)
+	newFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName)
+
+	// if the folder user want to be rename is a secure folder, prevent this behavior
+
+	if folderIsSecure(h.Ctx, h.DB, oldFolderName) {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.RenameSecuredDirectoryError,
+				nil,
+			),
+		)
+		return
+	}
+
+	// check if folder or file is existing
+	if _, directoryStatusError := os.Stat(oldFolderName); directoryStatusError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RenameNonexistentDirectoryError,
+				nil,
+				directoryStatusError.Error(),
+			),
+		)
+		return
+	}
+
+	remameFolderCommand := fmt.Sprintf("mv %s %s", oldFolderName, newFolderName)
+
+	_, remameFolderStdErr, remameFolderError := utils.Shellout(h.Ctx, remameFolderCommand)
+	if remameFolderStdErr != "" || remameFolderError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RemameFolderError,
+				nil,
+				fmt.Sprintf(
+					"cannot rename folder\n  - error 1: %s\n  - error 2: %s",
+					remameFolderStdErr,
+					remameFolderError.Error(),
+				),
+			),
+		)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) CreateFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.CreateFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.FolderToCreate, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	if strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"input cannot contain \\",
+			),
+		)
+		return
+	}
+	folderToCreate := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.FolderToCreate)
+
+	// check if use root folder is existing
+	if _, directoryStatusError := os.Stat(folderToCreate); os.IsNotExist(directoryStatusError) {
+		log.WithLevel(constant.Info, h.Ctx, "start to create folder %s", folderToCreate)
+		makeDirectoryAllError := os.MkdirAll(folderToCreate, 0755)
+		if makeDirectoryAllError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.CreateFolderError,
+					nil,
+					makeDirectoryAllError.Error(),
+				),
+			)
+			return
+		}
+	}
+	fileNameToCreate := requestPayload.Request.FileNameToCreate + "." + requestPayload.Request.FileExtension
+	createFileWithTouchCommand := "touch " + url.QueryEscape(fileNameToCreate)
+
+	_, createFileStdErr, createFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, createFileWithTouchCommand, folderToCreate)
+	if createFileStdErr != "" || createFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CreateFileError,
+				nil,
+				fmt.Sprintf(
+					"cannot create file %s at %s",
+					fileNameToCreate,
+					folderToCreate,
+				),
+			),
+		)
+		return
+	}
+
 	c.JSON(
 		http.StatusOK,
 		utils.ReturnResponse(
@@ -408,6 +661,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	if len(folderLocationArray) > 0 {
 		folderLocation = folderLocationArray[0]
+	}
+
+	if strings.Contains(folderLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
 	}
 
 	credential := multipartForm.Value["credential"]
@@ -570,6 +836,19 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	credential := c.Query("credential")
 	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
 
+	if strings.Contains(folderLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	if folderLocation == "" || fileNameToDownloadFromRequest == "" {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
@@ -679,6 +958,18 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 	if !isParseRequestPayloadSuccess {
 		return
 	}
+	if strings.Contains(requestPayload.Request.LocationToRemove, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
 
 	if errorEnums, handleOtpError := handleCheckUserOtp(h.Ctx, h.DB, requestPayload.Request.OtpCredential); handleOtpError != nil {
 		c.AbortWithStatusJSON(
@@ -765,6 +1056,19 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 	if !isParseRequestPayloadSuccess {
 		return
 	}
+	if strings.Contains(requestPayload.Request.Folder, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToSecure := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
 
@@ -887,6 +1191,18 @@ func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
 	requestPayload := payload.CheckSecureFolderStatusBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
 	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.Folder, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
 		return
 	}
 	systemRootFolder := log.GetSystemRootFolder()
@@ -1078,6 +1394,28 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
 	}
 	return checkCredentialError
+}
+
+func folderIsSecure(ctx context.Context, db *gorm.DB, folderToCheck string) bool {
+
+	secureFolderData := []model.UserFolderCredential{}
+
+	db.WithContext(ctx).Where(
+		model.UserFolderCredential{
+			Username: ctx.Value(constant.UsernameLogKey).(string),
+		},
+	).Find(&secureFolderData)
+
+	isInputFolderSecured := false
+
+	for _, userFolderCredentialElement := range secureFolderData {
+		if userFolderCredentialElement.Directory == folderToCheck || strings.Contains(folderToCheck, userFolderCredentialElement.Directory) {
+			isInputFolderSecured = true
+			break
+		}
+	}
+
+	return isInputFolderSecured
 }
 
 func convertKBToMB(kb float64) float64 {
