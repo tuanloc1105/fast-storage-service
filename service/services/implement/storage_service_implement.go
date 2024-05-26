@@ -9,6 +9,7 @@ import (
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -606,13 +607,50 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	} else {
 		finalFileName = fileNameToDownload
 	}
+	// c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
+	if openFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot open file "+folderToView+fileNameToDownload+" to download. "+openFileError.Error(),
+			),
+		)
+		return
+	}
+	defer func(file *os.File) {
+		closeFileError := file.Close()
+		if closeFileError != nil {
+			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+	}(fileToReturnToClient)
+
+	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
+	if readFileToReturnToClientError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot convert file "+folderToView+fileNameToDownload+" to download. "+readFileToReturnToClientError.Error(),
+			),
+		)
+		return
+	}
+
 	c.Status(200)
 	c.Header("File-Name", finalFileName)
 	c.Header("Content-Description", "File Transfer")
-	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Content-Type", constant.ContentTypeBinary)
 	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
-	c.Header("Content-Type", "application/octet-stream")
-	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Expires", "0")
+	c.Header("Cache-Control", "must-revalidate")
+	c.Data(http.StatusOK, constant.ContentTypeBinary, fileData)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
