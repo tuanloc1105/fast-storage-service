@@ -247,15 +247,41 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if strings.HasPrefix(elementDetail[0], "d") {
 						elementType = "folder"
 					}
-					fileName, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
+					fileNameWithExtension, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
 					if fileNameUnescapeError != nil {
-						fileName = ""
+						fileNameWithExtension = ""
 					}
-					fileInformation := payload.FileInformation{
-						Size: elementDetail[1],
-						Name: fileName,
+					fileSize := elementDetail[1]
+
+					var fileInformation payload.FileInformation = payload.FileInformation{
+						Size: fileSize,
+						Name: fileNameWithExtension,
 						Type: elementType,
 					}
+
+					statCommand := fmt.Sprintf("stat '%s' | grep \"Modify\"", elementDetail[2])
+					statStdOut, statStdErr, statError := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommand, folderToView)
+					if statStdErr != "" || statError != nil {
+						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while get stat: \n- %s\n- %s", statStdErr, statError.Error())
+					}
+					if statStdOut != "" {
+						modifiedDateString := strings.Replace(statStdOut, "Modify: ", "", -1)
+						if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
+							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
+						} else {
+							fileInformation.LastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
+						}
+					}
+
+					if elementType == "file" {
+						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
+						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
+						if fileExtensionErrOut != "" || fileExtensionError != nil {
+							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
+						}
+						fileInformation.Extension = strings.ToUpper(fileExtensionStdOut)
+					}
+
 					listOfFileInformation = append(listOfFileInformation, fileInformation)
 				}
 
@@ -387,8 +413,12 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToSaveFile := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
-
-	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, credential[0])
+	var checkFolderCredentialError error = nil
+	if len(credential) == 0 {
+		checkFolderCredentialError = handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, "")
+	} else {
+		checkFolderCredentialError = handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToSaveFile, credential[0])
+	}
 	if checkFolderCredentialError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
@@ -418,81 +448,82 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	file := fileUpload[0]
+	for _, file := range fileUpload {
+		fileUploadName := file.Filename
 
-	fileUploadName := file.Filename
+		if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
+			h.Ctx,
+			h.DB,
+			systemRootFolder,
+			file.Size,
+		); checkUploadingFileSize != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.UploadFileSizeExceeds,
+					nil,
+					checkUploadingFileSize.Error(),
+				),
+			)
+			return
+		}
 
-	if _, _, checkUploadingFileSize := handleCheckUserMaximumStorageWhenUploading(
-		h.Ctx,
-		h.DB,
-		systemRootFolder,
-		file.Size,
-	); checkUploadingFileSize != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.UploadFileSizeExceeds,
-				nil,
-				checkUploadingFileSize.Error(),
-			),
-		)
-		return
+		fileUploadExtension := filepath.Ext(file.Filename)
+
+		if fileUploadExtension != "" {
+			fileUploadName = strings.Replace(fileUploadName, fileUploadExtension, "", -1)
+		}
+
+		// check if file is exist
+		countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToSaveFile, fileUploadName+fileUploadExtension)
+		countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
+		if countFileError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.InternalFailure,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+countFileError.Error(),
+				),
+			)
+			return
+		}
+		numberOfFile, numberOfFileIntConvertError := strconv.Atoi(countFileStdOut)
+		if numberOfFileIntConvertError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.CountFileError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+numberOfFileIntConvertError.Error(),
+				),
+			)
+			return
+		}
+
+		if numberOfFile > 0 {
+			fileUploadName += " (" + uuid.New().String() + ")"
+		}
+		finalFileNameToSave := fileUploadName + fileUploadExtension
+		finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
+
+		if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.SaveFileError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading. "+saveUploadedFileError.Error(),
+				),
+			)
+			return
+		}
 	}
 
-	fileUploadExtension := filepath.Ext(file.Filename)
-
-	if fileUploadExtension != "" {
-		fileUploadName = strings.Replace(fileUploadName, fileUploadExtension, "", -1)
-	}
-
-	// check if file is exist
-	countNumberOfFileThatHaveTheSameNameCommand := fmt.Sprintf("ls -l %s | grep '%s' | wc -l", folderToSaveFile, fileUploadName+fileUploadExtension)
-	countFileStdOut, _, countFileError := utils.Shellout(h.Ctx, countNumberOfFileThatHaveTheSameNameCommand)
-	if countFileError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.InternalFailure,
-				nil,
-				countFileError.Error(),
-			),
-		)
-		return
-	}
-	numberOfFile, numberOfFileIntConvertError := strconv.Atoi(countFileStdOut)
-	if numberOfFileIntConvertError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.CountFileError,
-				nil,
-				numberOfFileIntConvertError.Error(),
-			),
-		)
-		return
-	}
-
-	if numberOfFile > 0 {
-		fileUploadName += " (" + uuid.New().String() + ")"
-	}
-	finalFileNameToSave := fileUploadName + fileUploadExtension
-	finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
-
-	if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.SaveFileError,
-				nil,
-				saveUploadedFileError.Error(),
-			),
-		)
-		return
-	}
 	c.JSON(
 		http.StatusOK,
 		utils.ReturnResponse(
@@ -971,19 +1002,25 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 	if currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
 		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
 		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
+		return nil
 	}
 
 	// check folder credential
+	var checkCredentialError error = nil
 	if folderSecureDataMatchWithInputFolder.CredentialType == "OTP" {
 		if _, handleOtpError := handleCheckUserOtp(ctx, db, credential); handleOtpError != nil {
-			return handleOtpError
+			checkCredentialError = handleOtpError
 		}
 	} else {
 		if comparePasswordError := utils.ComparePassword(credential, folderSecureDataMatchWithInputFolder.Credential); comparePasswordError != nil {
-			return comparePasswordError
+			checkCredentialError = comparePasswordError
 		}
 	}
-	return nil
+	if checkCredentialError == nil {
+		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
+		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
+	}
+	return checkCredentialError
 }
 
 func convertKBToMB(kb float64) float64 {

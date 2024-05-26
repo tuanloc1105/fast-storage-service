@@ -105,3 +105,71 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 	}
 	return stdoutString, stderrString, err
 }
+
+func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string, isLog ...bool) (string, string, error) {
+	if len(isLog) < 1 || (len(isLog) == 1 && isLog[0]) {
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"Start to executing command: %s",
+			HideSensitiveInformationOfCurlCommand(command),
+		)
+	}
+	if directory == "" {
+		return "", "", fmt.Errorf("`directory` can not be empty")
+	}
+	var cmd *exec.Cmd
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("bash", "-c", command)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", command)
+	default:
+		log.WithLevel(
+			constant.Error,
+			ctx,
+			"%s not implemented",
+			runtime.GOOS,
+		)
+		return "", "", fmt.Errorf("%s not implemented", runtime.GOOS)
+	}
+	cmd.Dir = directory
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	exitCode := cmd.ProcessState.ExitCode()
+	stdoutString := strings.TrimSuffix(stdout.String(), "\n")
+	stderrString := stderr.String()
+	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"--- command exit status ---\n%d",
+			exitCode,
+		)
+		if IsStringAJson(stdoutString) {
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"--- stdout ---\n%s",
+				HideSensitiveJsonField(stdoutString),
+			)
+		} else {
+			log.WithLevel(
+				constant.Info,
+				ctx,
+				"--- stdout ---\n%s",
+				stdoutString,
+			)
+		}
+		log.WithLevel(
+			constant.Info,
+			ctx,
+			"--- stderr ---\n%s",
+			stderrString,
+		)
+	}
+	return stdoutString, stderrString, err
+}

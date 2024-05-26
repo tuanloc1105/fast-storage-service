@@ -21,6 +21,7 @@ const LogFileLocation = "fast_storage_service_log_%d_%d_%d.log"
 const DeltaPositive = 0.5
 const DeltaNegative = -0.5
 const YyyyMmDdHhMmSsFormat = "2006-01-02 15:04:05"
+const FileStatDateTimeLayout = "2006-01-02 15:04:05.999999999 -0700"
 const AscKeyword = "ASC"
 const DescKeyword = "DESC"
 const EmptyString = ""
