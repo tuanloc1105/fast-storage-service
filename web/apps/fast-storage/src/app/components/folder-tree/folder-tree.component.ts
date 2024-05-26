@@ -1,29 +1,28 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  Inject,
   OnInit,
   computed,
   effect,
   inject,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NewFolderComponent } from '@app/shared/components';
 import { Directory } from '@app/shared/model';
-import { getFullPath, getNestedObject } from '@app/shared/utils';
+import { getFullPath } from '@app/shared/utils';
 import { AppStore, StorageStore } from '@app/store';
 import { patchState } from '@ngrx/signals';
-import { MenuItem, TreeNode } from 'primeng/api';
+import { TreeNode } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ContextMenuModule } from 'primeng/contextmenu';
 import { DialogModule } from 'primeng/dialog';
+import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MeterGroupModule } from 'primeng/metergroup';
 import { PanelMenuModule } from 'primeng/panelmenu';
-import {
-  TreeModule,
-  TreeNodeContextMenuSelectEvent,
-  TreeNodeExpandEvent,
-} from 'primeng/tree';
+import { TreeModule, TreeNodeExpandEvent } from 'primeng/tree';
 
 @Component({
   selector: 'app-folder-tree',
@@ -36,7 +35,7 @@ import {
     DialogModule,
     InputTextModule,
     FormsModule,
-    ContextMenuModule,
+    DynamicDialogModule,
   ],
   templateUrl: './folder-tree.component.html',
   styleUrl: './folder-tree.component.scss',
@@ -46,11 +45,9 @@ export class FolderTreeComponent implements OnInit {
   public appStore = inject(AppStore);
   public storageStore = inject(StorageStore);
 
-  public newFolderVisible = false;
-  public newFolderName = '';
+  private readonly dialogService = inject(DialogService);
 
   public selectedDocumentFolder: TreeNode | null = null;
-  public folderContextMenu: MenuItem[] = [];
 
   private nodeExpandEvent!: TreeNodeExpandEvent;
   private cdr = inject(ChangeDetectorRef);
@@ -63,20 +60,19 @@ export class FolderTreeComponent implements OnInit {
     },
   ]);
 
-  constructor() {
+  constructor(@Inject(DOCUMENT) private document: Document) {
     effect(
       () => {
-        if (this.storageStore.hasNewFolder()) {
-          this.closeNewFolderDialog();
-        }
-
         if (
           this.storageStore.subMenuDirectory() &&
           this.storageStore.subMenuDirectory().length > 0
         ) {
           this.handleRefreshFolder(this.storageStore.subMenuDirectory());
         } else {
-          if (this.nodeExpandEvent) this.nodeExpandEvent.node.loading = false;
+          if (this.nodeExpandEvent) {
+            this.nodeExpandEvent.node.loading = false;
+            this.cdr.detectChanges();
+          }
         }
       },
       { allowSignalWrites: true }
@@ -87,27 +83,19 @@ export class FolderTreeComponent implements OnInit {
     this.storageStore.getDirectory('');
   }
 
-  public onTreeContextMenuSelect(event: TreeNodeContextMenuSelectEvent) {
-    if (event.node.data.type === 'file') {
-      this.folderContextMenu = [
-        {
-          label: 'Download',
-          icon: 'pi pi-download',
-        },
-      ];
+  public switchTheme() {
+    const currentTheme = localStorage.getItem('theme');
+    const themeLink = this.document.getElementById(
+      'app-theme'
+    ) as HTMLLinkElement;
+    if (currentTheme === 'dark') {
+      themeLink.href = 'aura-light-cyan.css';
+      patchState(this.appStore, { isDarkMode: false });
+      localStorage.setItem('theme', 'light');
     } else {
-      this.folderContextMenu = [
-        {
-          label: 'Create Folder',
-          icon: 'pi pi-folder',
-          command: () => (this.newFolderVisible = true),
-        },
-        {
-          label: 'Create File',
-          icon: 'pi pi-file',
-          command: () => (this.newFolderVisible = true),
-        },
-      ];
+      themeLink.href = 'aura-dark-cyan.css';
+      patchState(this.appStore, { isDarkMode: true });
+      localStorage.setItem('theme', 'dark');
     }
   }
 
@@ -121,15 +109,12 @@ export class FolderTreeComponent implements OnInit {
   public addNewFolder() {
     if (this.selectedDocumentFolder) {
       const path = getFullPath(this.selectedDocumentFolder);
-      this.storageStore.createFolder(path + '/' + this.newFolderName);
-    } else {
-      this.storageStore.createFolder(this.newFolderName);
+      patchState(this.storageStore, { currentPath: path });
     }
-  }
 
-  public closeNewFolderDialog() {
-    this.newFolderVisible = false;
-    this.newFolderName = '';
+    this.dialogService.open(NewFolderComponent, {
+      header: 'Create new folder',
+    });
   }
 
   public onNodeSelect(event: TreeNode<any> | TreeNode<any>[] | null) {
@@ -140,12 +125,13 @@ export class FolderTreeComponent implements OnInit {
         type: 'detailFolder',
       });
       patchState(this.storageStore, {
+        currentPath: path.join('/'),
         breadcrumb: path.map((p) => ({
           label: p,
           command: () => {
-            const newPath = path.slice(0, path.indexOf(p) + 1).join('/');
+            const nextPath = path.slice(0, path.indexOf(p) + 1).join('/');
             this.storageStore.getDetailsDirectory({
-              path: newPath,
+              path: nextPath,
               type: 'detailFolder',
             });
           },
@@ -159,23 +145,21 @@ export class FolderTreeComponent implements OnInit {
     const _node = { ...this.nodeExpandEvent?.node };
     const path = getFullPath(_node).split('/');
 
-    _node.children = [];
-
     data.forEach((dir) => {
-      _node.children?.push({
-        key: dir.name,
-        label: dir.name,
-        data: dir,
-        icon: dir.type === 'folder' ? 'pi pi-fw pi-folder' : 'pi pi-fw pi-file',
-        leaf: false,
-        loading: false,
-        ...(dir.type === 'folder' && { children: [] }),
-      });
+      if (dir.type !== 'file')
+        _node.children?.push({
+          key: dir.name,
+          label: dir.name,
+          data: dir,
+          leaf: false,
+          loading: false,
+          children: [],
+        });
     });
 
     this.addChildrenToNode(this.storageStore.directories(), _node, path);
-
     this.nodeExpandEvent.node.loading = false;
+    this.cdr.detectChanges();
   }
 
   private addChildrenToNode(

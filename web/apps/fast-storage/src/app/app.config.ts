@@ -21,6 +21,7 @@ import {
   tokenInterceptor,
 } from '@app/core/interceptor';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { DialogService } from 'primeng/dynamicdialog';
 
 export function HttpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http);
@@ -30,6 +31,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     MessageService,
     ConfirmationService,
+    DialogService,
     provideRouter(
       appRoutes,
       withViewTransitions(),

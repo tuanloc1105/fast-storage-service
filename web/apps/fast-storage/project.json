@@ -23,7 +23,19 @@
           "apps/fast-storage/src/favicon.ico",
           "apps/fast-storage/src/assets"
         ],
-        "styles": ["apps/fast-storage/src/styles.scss"],
+        "styles": [
+          "apps/fast-storage/src/styles.scss",
+          {
+            "input": "apps/fast-storage/src/theme-aura-dark-cyan.scss",
+            "inject": false,
+            "bundleName": "aura-dark-cyan"
+          },
+          {
+            "input": "apps/fast-storage/src/theme-aura-light-cyan.scss",
+            "inject": false,
+            "bundleName": "aura-light-cyan"
+          }
+        ],
         "scripts": []
       },
       "configurations": {

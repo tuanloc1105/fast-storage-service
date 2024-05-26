@@ -4,6 +4,8 @@ import {
   CreateFolderRequest,
   Directory,
   DirectoryRequest,
+  DownloadFileRequest,
+  RemoveFileRequest,
   StorageStatus,
   UploadFileRequest,
 } from '@app/shared/model';
@@ -40,7 +42,9 @@ export class StorageService {
     payload: UploadFileRequest
   ): Observable<CommonResponse<any>> {
     const formData = new FormData();
-    formData.append('file', payload.file);
+    payload.files.forEach((file) => {
+      formData.append('file', file);
+    });
     formData.append('folderLocation', payload.folderLocation);
     return this.http.post<CommonResponse<any>>(
       '/storage/upload_file',
@@ -48,9 +52,13 @@ export class StorageService {
     );
   }
 
-  public downloadFile(fileName: string): Observable<CommonResponse<any>> {
+  public downloadFile(
+    payload: DownloadFileRequest
+  ): Observable<CommonResponse<any>> {
+    const { fileNameToDownload, locationToDownload } = payload.request;
+
     return this.http.get<CommonResponse<any>>(
-      `/storage/download_file/${fileName}`
+      `/storage/download_file?fileNameToDownload=${fileNameToDownload}&locationToDownload=${locationToDownload}`
     );
   }
 
@@ -64,5 +72,11 @@ export class StorageService {
       '/storage/create_folder',
       payload
     );
+  }
+
+  public removeFile(
+    payload: RemoveFileRequest
+  ): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>('/storage/remove_file', payload);
   }
 }

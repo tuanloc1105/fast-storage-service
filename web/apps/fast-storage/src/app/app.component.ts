@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Inject, OnInit, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PrimeNGConfig } from 'primeng/api';
@@ -6,6 +6,9 @@ import { lastValueFrom } from 'rxjs';
 import { LocalStorageJwtService } from './shared/services';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { DOCUMENT } from '@angular/common';
+import { AppStore } from './store';
+import { patchState } from '@ngrx/signals';
 
 @Component({
   standalone: true,
@@ -18,8 +21,12 @@ export class AppComponent implements OnInit {
   private readonly primengConfig = inject(PrimeNGConfig);
   private readonly localStorageJwtService = inject(LocalStorageJwtService);
   private readonly router = inject(Router);
+  private readonly appStore = inject(AppStore);
 
-  constructor(translate: TranslateService) {
+  constructor(
+    translate: TranslateService,
+    @Inject(DOCUMENT) private document: Document
+  ) {
     // this language will be used as a fallback when a translation isn't found in the current language
     translate.setDefaultLang('en');
 
@@ -36,6 +43,24 @@ export class AppComponent implements OnInit {
     const accessToken = await lastValueFrom(
       this.localStorageJwtService.getAccessToken()
     );
+
+    const currentTheme = localStorage.getItem('theme');
+    const themeLink = this.document.getElementById(
+      'app-theme'
+    ) as HTMLLinkElement;
+    if (currentTheme) {
+      if (currentTheme === 'dark') {
+        themeLink.href = 'aura-dark-cyan.css';
+        patchState(this.appStore, { isDarkMode: true });
+      } else {
+        patchState(this.appStore, { isDarkMode: false });
+        themeLink.href = 'aura-light-cyan.css';
+      }
+    } else {
+      localStorage.setItem('theme', 'light');
+      patchState(this.appStore, { isDarkMode: false });
+      themeLink.href = 'aura-light-cyan.css';
+    }
 
     if (accessToken) {
       this.router.navigate([

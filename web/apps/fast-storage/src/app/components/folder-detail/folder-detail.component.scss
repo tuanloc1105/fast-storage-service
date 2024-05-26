@@ -1,0 +1,10 @@
+:host ::ng-deep {
+  .folder-detail {
+    .p-speeddial-quarter-circle {
+      &.p-speeddial-direction-up-left {
+          right: 20px;
+          bottom: 30px;
+      }
+    }
+  }
+}

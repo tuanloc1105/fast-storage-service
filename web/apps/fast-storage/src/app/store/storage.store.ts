@@ -4,7 +4,13 @@ import {
   COLOR_STATUS_STORAGE,
   DEFAULT_STATUS_STORAGE_COLOR,
 } from '@app/shared/constant';
-import { Directory, StorageStatus, UploadFileRequest } from '@app/shared/model';
+import {
+  Directory,
+  DownloadFileRequest,
+  RemoveFileRequest,
+  StorageStatus,
+  UploadFileRequest,
+} from '@app/shared/model';
 import { tapResponse } from '@ngrx/operators';
 import {
   patchState,
@@ -24,8 +30,10 @@ type StorageState = {
   isLoading: boolean;
   hasNewFolder: boolean;
   hasNewFile: boolean;
+  hasFileRemoved: boolean;
   breadcrumb: MenuItem[];
   detailFolder: Directory[];
+  currentPath: string;
 };
 
 const initialState: StorageState = {
@@ -35,8 +43,10 @@ const initialState: StorageState = {
   isLoading: false,
   hasNewFolder: false,
   hasNewFile: false,
+  hasFileRemoved: false,
   breadcrumb: [],
   detailFolder: [],
+  currentPath: '',
 };
 
 export const StorageStore = signalStore(
@@ -65,7 +75,6 @@ export const StorageStore = signalStore(
         key: dir.name,
         label: dir.name,
         data: dir,
-        icon: dir.type === 'folder' ? 'pi pi-fw pi-folder' : 'pi pi-fw pi-file',
         leaf: false,
         loading: false,
         ...(dir.type === 'folder' && { children: [] }),
@@ -120,7 +129,11 @@ export const StorageStore = signalStore(
       }>(
         pipe(
           switchMap((payload) => {
-            patchState(store, { isLoading: true });
+            patchState(store, {
+              isLoading: true,
+              hasNewFolder: false,
+              currentPath: payload.path,
+            });
             return storageService.getDirectory(payload.path).pipe(
               tapResponse({
                 next: (res) => {
@@ -142,7 +155,7 @@ export const StorageStore = signalStore(
       uploadFile: rxMethod<UploadFileRequest>(
         pipe(
           switchMap((payload) => {
-            patchState(store, { isLoading: true });
+            patchState(store, { isLoading: true, hasNewFile: false });
             return storageService.uploadFile(payload).pipe(
               tapResponse({
                 next: (res) => {
@@ -151,6 +164,7 @@ export const StorageStore = signalStore(
                     summary: 'Success',
                     detail: 'File uploaded successfully',
                   });
+                  patchState(store, { hasNewFile: true });
                 },
                 error: (err) => {
                   console.log(err);
@@ -161,17 +175,17 @@ export const StorageStore = signalStore(
           })
         )
       ),
-      downloadFile: rxMethod<string>(
+      downloadFile: rxMethod<DownloadFileRequest>(
         pipe(
-          switchMap((fileName) => {
+          switchMap((payload) => {
             patchState(store, { isLoading: true });
-            return storageService.downloadFile(fileName).pipe(
+            return storageService.downloadFile(payload).pipe(
               tapResponse({
                 next: (res) => {
                   const url = window.URL.createObjectURL(res.response);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = fileName;
+                  a.download = payload.request.fileNameToDownload;
                   a.click();
                   window.URL.revokeObjectURL(url);
                 },
@@ -196,6 +210,29 @@ export const StorageStore = signalStore(
                     severity: 'success',
                     summary: 'Success',
                     detail: 'Folder created successfully',
+                  });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      removeFile: rxMethod<RemoveFileRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true, hasFileRemoved: false });
+            return storageService.removeFile(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, { hasFileRemoved: true });
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'File removed successfully',
                   });
                 },
                 error: (err) => {
