@@ -222,15 +222,15 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			)
 		} else {
 			listFileInDirectoryCommand += " | awk 'NR>1{printf \"%s !x&2 %s !x&2 %s\\n\", $1, $5, $9}'"
-			if listFileStdout, _, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
-				if listFileError != nil {
+			if listFileStdout, listFileStderr, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
+				if listFileStderr != "" || listFileError != nil {
 					c.AbortWithStatusJSON(
 						http.StatusInternalServerError,
 						utils.ReturnResponse(
 							c,
 							constant.ListFolderError,
 							nil,
-							listFileError.Error(),
+							listFileStderr+". "+listFileError.Error(),
 						),
 					)
 					return
