@@ -924,7 +924,8 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Expires", "0")
 	c.Header("Cache-Control", "must-revalidate")
-	c.Data(http.StatusOK, constant.ContentTypeBinary, fileData)
+	// c.Data(http.StatusOK, constant.ContentTypeBinary, fileData)
+	c.Writer.Write(fileData)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
