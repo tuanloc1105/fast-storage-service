@@ -22,7 +22,11 @@ import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MeterGroupModule } from 'primeng/metergroup';
 import { PanelMenuModule } from 'primeng/panelmenu';
-import { TreeModule, TreeNodeExpandEvent } from 'primeng/tree';
+import {
+  TreeModule,
+  TreeNodeCollapseEvent,
+  TreeNodeExpandEvent,
+} from 'primeng/tree';
 
 @Component({
   selector: 'app-folder-tree',
@@ -104,6 +108,10 @@ export class FolderTreeComponent implements OnInit {
     this.nodeExpandEvent.node.loading = true;
     const path = getFullPath(event.node);
     this.storageStore.getDetailsDirectory({ path, type: 'subMenu' });
+  }
+
+  public onNodeCollapse(event: TreeNodeCollapseEvent) {
+    event.node.children = [];
   }
 
   public addNewFolder() {
