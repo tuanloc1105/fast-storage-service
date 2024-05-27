@@ -1,0 +1,11 @@
+# Ignore Angular files
+.angular
+
+# Ignore Nx files
+.nx
+
+# Ignore build output directory
+dist
+
+# Ignore dependencies
+node_modules

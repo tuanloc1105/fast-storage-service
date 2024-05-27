@@ -1,8 +1,8 @@
-FROM node:20.12.2-alpine3.19 as build
+FROM tuanloc/my_ubuntu:latest as build
 WORKDIR /app
 COPY . .
-RUN npm install
-RUN npm run build
+RUN pnpm install
+RUN nx build fast-storage
 
 FROM nginx:1.26.0
 RUN mkdir -p /app-run
