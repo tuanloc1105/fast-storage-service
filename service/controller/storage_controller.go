@@ -44,6 +44,7 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ErrorHandler)
 
 	storageRouter.GET("/download_file",
+		utils.GetTokenInParamAndSetToHeader(),
 		utils.AuthenticationWithAuthorization([]string{}),
 		utils.RequestLogger,
 		utils.ResponseLogger,
@@ -62,6 +63,20 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.RequestLogger,
 		utils.ResponseLogger,
 		handler.CreateFolder,
+		utils.ErrorHandler)
+
+	storageRouter.POST("/rename_file_or_folder",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.RenameFileOrFolder,
+		utils.ErrorHandler)
+
+	storageRouter.POST("/create_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CreateFile,
 		utils.ErrorHandler)
 
 	storageRouter.POST("/set_password_for_folder",

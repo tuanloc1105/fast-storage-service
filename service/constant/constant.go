@@ -162,4 +162,24 @@ var (
 		ErrorCode:    1018,
 		ErrorMessage: "Cannot view secure folder due to wrong `PASSWORD` or `OTP`",
 	}
+	CreateFileError = ErrorEnums{
+		ErrorCode:    1019,
+		ErrorMessage: "Cannot create file",
+	}
+	RenameFolderError = ErrorEnums{
+		ErrorCode:    1020,
+		ErrorMessage: "Cannot rename folder",
+	}
+	RenameNonexistentDirectoryError = ErrorEnums{
+		ErrorCode:    1021,
+		ErrorMessage: "Rename nonexistent folder error",
+	}
+	RenameSecuredDirectoryError = ErrorEnums{
+		ErrorCode:    1021,
+		ErrorMessage: "Cannot rename a secured folder",
+	}
+	HashPasswordForSecuredFolderError = ErrorEnums{
+		ErrorCode:    1022,
+		ErrorMessage: "Cannot secure folder due to hash password error",
+	}
 )

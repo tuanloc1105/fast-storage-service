@@ -2,13 +2,13 @@ package implement
 
 import (
 	"context"
-	"errors"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/log"
 	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -159,6 +159,19 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 		return
 	}
 
+	if strings.Contains(requestPayload.Request.CurrentLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.CurrentLocation)
 	userRootFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, constant.EmptyString)
@@ -198,20 +211,18 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 	listFileInDirectoryCommand := fmt.Sprintf("ls -lh '%s'", folderToView)
 	if listFileStdout, _, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
-		if listFileError != nil {
-			c.AbortWithStatusJSON(
-				http.StatusInternalServerError,
-				utils.ReturnResponse(
-					c,
-					constant.FolderNotExistError,
-					nil,
-				),
-			)
-			return
-		}
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+			),
+		)
+		return
 	} else {
-		fmt.Println(listFileStdout)
-		if strings.Contains(listFileStdout, "total 0") {
+		lsCommandResultLineArray := strings.Split(listFileStdout, "\n")
+		if strings.Contains(listFileStdout, "total 0") && len(lsCommandResultLineArray) <= 1 {
 			c.JSON(
 				http.StatusOK,
 				utils.ReturnResponse(
@@ -222,22 +233,20 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			)
 		} else {
 			listFileInDirectoryCommand += " | awk 'NR>1{printf \"%s !x&2 %s !x&2 %s\\n\", $1, $5, $9}'"
-			if listFileStdout, listFileStderr, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
-				if listFileStderr != "" || listFileError != nil {
-					c.AbortWithStatusJSON(
-						http.StatusInternalServerError,
-						utils.ReturnResponse(
-							c,
-							constant.ListFolderError,
-							nil,
-							listFileStderr+". "+listFileError.Error(),
-						),
-					)
-					return
-				}
+			if listOfFileWithAwkStdout, _, listOfFileWithAwkError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listOfFileWithAwkError != nil {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.ListFolderError,
+						nil,
+						listOfFileWithAwkError.Error(),
+					),
+				)
+				return
 			} else {
 				var listOfFileInformation []payload.FileInformation
-				commandResultLineArray := strings.Split(listFileStdout, "\n")
+				commandResultLineArray := strings.Split(listOfFileWithAwkStdout, "\n")
 				for _, element := range commandResultLineArray {
 					elementDetail := strings.Split(element, " !x&2 ")
 					if len(elementDetail) != 3 {
@@ -261,7 +270,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 					statCommand := fmt.Sprintf("stat '%s' | grep \"Modify\"", elementDetail[2])
 					statStdOut, statStdErr, statError := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommand, folderToView)
-					if statStdErr != "" || statError != nil {
+					if statError != nil {
 						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while get stat: \n- %s\n- %s", statStdErr, statError.Error())
 					}
 					if statStdOut != "" {
@@ -276,7 +285,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if elementType == "file" {
 						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
 						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
-						if fileExtensionErrOut != "" || fileExtensionError != nil {
+						if fileExtensionError != nil {
 							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
 						}
 						fileInformation.Extension = strings.ToUpper(fileExtensionStdOut)
@@ -324,6 +333,18 @@ func (h StorageHandler) CreateFolder(c *gin.Context) {
 	if !isParseRequestPayloadSuccess {
 		return
 	}
+	if strings.Contains(requestPayload.Request.FolderToCreate, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
 
 	systemRootFolder := log.GetSystemRootFolder()
 	if strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
@@ -357,6 +378,234 @@ func (h StorageHandler) CreateFolder(c *gin.Context) {
 			return
 		}
 	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) RenameFileOrFolder(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.RenameFolderBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if strings.Contains(requestPayload.Request.OldFolderLocationName, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+	if strings.Contains(requestPayload.Request.NewFolderLocationName, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	if strings.Contains(requestPayload.Request.OldFolderLocationName, "\\") || strings.Contains(requestPayload.Request.NewFolderLocationName, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`oldFolderLocationName` or `newFolderLocationName` cannot contain \\",
+			),
+		)
+		return
+	}
+	oldFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName)
+	newFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName)
+
+	// if the folder user want to be rename is a secure folder, prevent this behavior
+
+	if folderIsSecure(h.Ctx, h.DB, oldFolderName) {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.RenameSecuredDirectoryError,
+				nil,
+			),
+		)
+		return
+	}
+
+	// check if folder or file is existing
+	if _, directoryStatusError := os.Stat(oldFolderName); directoryStatusError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RenameNonexistentDirectoryError,
+				nil,
+				directoryStatusError.Error(),
+			),
+		)
+		return
+	}
+
+	renameFolderCommand := fmt.Sprintf("mv %s %s", oldFolderName, newFolderName)
+
+	_, renameFolderStdErr, renameFolderError := utils.Shellout(h.Ctx, renameFolderCommand)
+	if renameFolderError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.RenameFolderError,
+				nil,
+				fmt.Sprintf(
+					"cannot rename folder\n  - error 1: %s\n  - error 2: %s",
+					renameFolderStdErr,
+					renameFolderError.Error(),
+				),
+			),
+		)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) CreateFile(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	requestPayload := payload.CreateFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.FolderToCreate, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	if strings.Contains(requestPayload.Request.FolderToCreate, "\\") {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"input cannot contain \\",
+			),
+		)
+		return
+	}
+	folderToCreate := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.FolderToCreate)
+
+	// check if use root folder is existing
+	if _, directoryStatusError := os.Stat(folderToCreate); os.IsNotExist(directoryStatusError) {
+		log.WithLevel(constant.Info, h.Ctx, "start to create folder %s", folderToCreate)
+		makeDirectoryAllError := os.MkdirAll(folderToCreate, 0755)
+		if makeDirectoryAllError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.CreateFolderError,
+					nil,
+					makeDirectoryAllError.Error(),
+				),
+			)
+			return
+		}
+	}
+	fileNameToCreate := requestPayload.Request.FileNameToCreate + "." + requestPayload.Request.FileExtension
+	createFileWithTouchCommand := "touch " + url.QueryEscape(fileNameToCreate)
+
+	_, createFileStdErr, createFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, createFileWithTouchCommand, folderToCreate)
+	if createFileStdErr != "" || createFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CreateFileError,
+				nil,
+				fmt.Sprintf(
+					"cannot create file %s at %s",
+					fileNameToCreate,
+					folderToCreate,
+				),
+			),
+		)
+		return
+	}
+
 	c.JSON(
 		http.StatusOK,
 		utils.ReturnResponse(
@@ -409,6 +658,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		folderLocation = folderLocationArray[0]
 	}
 
+	if strings.Contains(folderLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	credential := multipartForm.Value["credential"]
 
 	systemRootFolder := log.GetSystemRootFolder()
@@ -435,7 +697,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	fileUpload := multipartForm.File["file"]
 
-	if fileUpload == nil || len(fileUpload) == 0 {
+	if fileUpload == nil || len(fileUpload) < 1 {
 		c.AbortWithStatusJSON(
 			http.StatusNotFound,
 			utils.ReturnResponse(
@@ -555,19 +817,22 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	// requestPayload := payload.DownloadFileBody{}
-	// isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
-	// if !isParseRequestPayloadSuccess {
-	// 	return
-	// }
-
-	// locationToDownload
-	// fileNameToDownload
-	// credential
-
 	folderLocation := c.Query("locationToDownload")
 	credential := c.Query("credential")
 	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
+
+	if strings.Contains(folderLocation, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
 
 	if folderLocation == "" || fileNameToDownloadFromRequest == "" {
 		c.AbortWithStatusJSON(
@@ -606,13 +871,51 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	} else {
 		finalFileName = fileNameToDownload
 	}
+	// c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
+	if openFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot open file "+folderToView+fileNameToDownload+" to download. "+openFileError.Error(),
+			),
+		)
+		return
+	}
+	defer func(file *os.File) {
+		closeFileError := file.Close()
+		if closeFileError != nil {
+			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+	}(fileToReturnToClient)
+
+	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
+	if readFileToReturnToClientError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot convert file "+folderToView+fileNameToDownload+" to download. "+readFileToReturnToClientError.Error(),
+			),
+		)
+		return
+	}
+
 	c.Status(200)
 	c.Header("File-Name", finalFileName)
 	c.Header("Content-Description", "File Transfer")
-	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Content-Type", constant.ContentTypeBinary)
 	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
-	c.Header("Content-Type", "application/octet-stream")
-	c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Expires", "0")
+	c.Header("Cache-Control", "must-revalidate")
+	// c.Data(http.StatusOK, constant.ContentTypeBinary, fileData)
+	c.Writer.Write(fileData)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
@@ -639,6 +942,18 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 	requestPayload := payload.RemoveFileBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
 	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.LocationToRemove, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
 		return
 	}
 
@@ -727,6 +1042,19 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 	if !isParseRequestPayloadSuccess {
 		return
 	}
+	if strings.Contains(requestPayload.Request.Folder, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToSecure := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
 
@@ -802,27 +1130,38 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 		return
 	}
 
-	utils.EncryptPasswordPointer(&requestPayload.Request.Credential)
-	baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
-	userPasswordCredential := model.UserFolderCredential{
-		BaseEntity:               baseEntity,
-		Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
-		Directory:                folderToSecure,
-		Credential:               requestPayload.Request.Credential,
-		CredentialType:           requestPayload.Request.CredentialType,
-		LastFolderActivitiesTime: baseEntity.CreatedAt,
+	if encryptPasswordError := utils.EncryptPasswordPointer(&requestPayload.Request.Credential); encryptPasswordError != nil {
+		c.JSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.HashPasswordForSecuredFolderError,
+				nil,
+			),
+		)
+		return
+	} else {
+		baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+		userPasswordCredential := model.UserFolderCredential{
+			BaseEntity:               baseEntity,
+			Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
+			Directory:                folderToSecure,
+			Credential:               requestPayload.Request.Credential,
+			CredentialType:           requestPayload.Request.CredentialType,
+			LastFolderActivitiesTime: baseEntity.CreatedAt,
+		}
+
+		h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
+
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				nil,
+			),
+		)
 	}
-
-	h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
-
-	c.JSON(
-		http.StatusOK,
-		utils.ReturnResponse(
-			c,
-			constant.Success,
-			nil,
-		),
-	)
 }
 
 func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
@@ -849,6 +1188,18 @@ func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
 	requestPayload := payload.CheckSecureFolderStatusBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
 	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.Folder, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
 		return
 	}
 	systemRootFolder := log.GetSystemRootFolder()
@@ -892,167 +1243,4 @@ func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
 			false,
 		),
 	)
-}
-
-func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
-	folderToView := ""
-
-	if inputCurrentLocation == "" {
-		folderToView = log.EnsureTrailingSlash(systemRootFolder + ctx.Value(constant.UserIdLogKey).(string))
-	} else {
-		var currentLocationFromRequestPayload string
-		if strings.HasPrefix(inputCurrentLocation, "/") {
-			currentLocationFromRequestPayload = inputCurrentLocation[1:]
-		} else {
-			currentLocationFromRequestPayload = inputCurrentLocation
-		}
-		folderToView = log.EnsureTrailingSlash(systemRootFolder+ctx.Value(constant.UserIdLogKey).(string)) + currentLocationFromRequestPayload
-		folderToView = log.EnsureTrailingSlash(folderToView)
-	}
-	return folderToView
-}
-
-func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
-	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
-		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
-			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
-			db.WithContext(ctx).Where(
-				model.UserStorageLimitationData{
-					Username: currentUsername,
-				},
-			).Find(&userStorageMaximunSizeFromDb)
-			if userStorageMaximunSizeFromDb.BaseEntity.Id != 0 {
-				return nil
-			} else {
-				baseEntity := utils.GenerateNewBaseEntity(ctx)
-				newUserStorageMaximunSizeToSaveToDb := model.UserStorageLimitationData{
-					BaseEntity:         baseEntity,
-					Username:           currentUsername,
-					MaximunStorageSize: 1,
-					StorageSizeUnit:    "GB",
-				}
-				saveDataResult := db.WithContext(ctx).Save(&newUserStorageMaximunSizeToSaveToDb)
-				return saveDataResult.Error
-			}
-		}
-		return errors.New("cannot convert current username data")
-	}
-	return errors.New("cannot determine current user")
-}
-
-func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB, systemRootFolder string, fileUploadingSize int64) (float64, float64, error) {
-	// if fileUploadingSize == 0 {
-	// 	return 0, 0, nil
-	// }
-	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
-		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
-			userStorageMaximunSizeFromDb := model.UserStorageLimitationData{}
-			db.WithContext(ctx).Where(
-				model.UserStorageLimitationData{
-					Username: currentUsername,
-				},
-			).Find(&userStorageMaximunSizeFromDb)
-			if userStorageMaximunSizeFromDb.BaseEntity.Id == 0 {
-				return 0, 0, errors.New("cannot check user storage limitation")
-			}
-			folderToCheckSize := systemRootFolder + ctx.Value(constant.UserIdLogKey).(string)
-			checkFolderSizeCommand := fmt.Sprintf("du -s %s", folderToCheckSize)
-			checkFolderSizeStdOut, _, checkFolderSizeError := utils.Shellout(ctx, checkFolderSizeCommand)
-			if checkFolderSizeError != nil {
-				return 0, 0, checkFolderSizeError
-			}
-			folderSizeInt64, convertFolderSizeToInt64Error := strconv.
-				ParseInt(
-					strings.Split(checkFolderSizeStdOut, "\t")[0],
-					10,
-					64,
-				)
-			if convertFolderSizeToInt64Error != nil {
-				return 0, 0, convertFolderSizeToInt64Error
-			}
-			userMaximunMbStorage := convertGBToMB(float64(int64(userStorageMaximunSizeFromDb.MaximunStorageSize)))
-			folderSizeMb := convertKBToMB(float64(folderSizeInt64))
-			fileUploadingSizeMb := convertBytesToMB(fileUploadingSize)
-			log.WithLevel(
-				constant.Info,
-				ctx,
-				"user storage information when uploading file\n\t- user maximun storage: %.7f\n\t- current storage size of user: %.7f\n\t- file uploading size: %.7f",
-				userMaximunMbStorage,
-				folderSizeMb,
-				fileUploadingSizeMb,
-			)
-			if folderSizeMb+fileUploadingSizeMb > userMaximunMbStorage {
-				return 0, 0, errors.New("no more space to store file")
-			}
-			return userMaximunMbStorage, folderSizeMb, nil
-		}
-		return 0, 0, errors.New("cannot convert current username data")
-	}
-	return 0, 0, errors.New("cannot determine current user")
-}
-
-func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, folderToCheck, credential string) error {
-
-	currentTime := time.Now()
-	secureFolderData := []model.UserFolderCredential{}
-	folderSecureDataMatchWithInputFolder := model.UserFolderCredential{}
-
-	db.WithContext(ctx).Where(
-		model.UserFolderCredential{
-			Username: ctx.Value(constant.UsernameLogKey).(string),
-		},
-	).Find(&secureFolderData)
-
-	isInputFolderSecured := false
-
-	for _, userFolderCredentialElement := range secureFolderData {
-		if userFolderCredentialElement.Directory == folderToCheck || strings.Contains(folderToCheck, userFolderCredentialElement.Directory) {
-			isInputFolderSecured = true
-			folderSecureDataMatchWithInputFolder = userFolderCredentialElement
-			break
-		}
-	}
-
-	if !isInputFolderSecured {
-		return nil
-	}
-
-	// check folder activity
-	if currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
-		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
-		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
-		return nil
-	}
-
-	// check folder credential
-	var checkCredentialError error = nil
-	if folderSecureDataMatchWithInputFolder.CredentialType == "OTP" {
-		if _, handleOtpError := handleCheckUserOtp(ctx, db, credential); handleOtpError != nil {
-			checkCredentialError = handleOtpError
-		}
-	} else {
-		if comparePasswordError := utils.ComparePassword(credential, folderSecureDataMatchWithInputFolder.Credential); comparePasswordError != nil {
-			checkCredentialError = comparePasswordError
-		}
-	}
-	if checkCredentialError == nil {
-		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
-		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
-	}
-	return checkCredentialError
-}
-
-func convertKBToMB(kb float64) float64 {
-	const kbPerMB = 1024.0
-	return kb / kbPerMB
-}
-
-func convertGBToMB(gb float64) float64 {
-	const mbPerGB = 1024.0
-	return gb * mbPerGB
-}
-
-func convertBytesToMB(bytes int64) float64 {
-	const bytesPerMB = 1024 * 1024
-	return float64(bytes) / float64(bytesPerMB)
 }
