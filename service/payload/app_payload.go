@@ -47,16 +47,6 @@ type GetAllElementInSpecificDirectoryBody struct {
 	Request GetAllElementInSpecificDirectoryBodyValue `json:"request" binding:"required"`
 }
 
-type DownloadFileBodyValue struct {
-	LocationToDownload string `json:"locationToDownload" binding:"required"`
-	FileNameToDownload string `json:"fileNameToDownload" binding:"required"`
-	Credential         string `json:"credential"`
-}
-
-type DownloadFileBody struct {
-	Request DownloadFileBodyValue `json:"request" binding:"required"`
-}
-
 type RemoveFileBodyValue struct {
 	LocationToRemove string `json:"locationToRemove" binding:"required"`
 	FileNameToRemove string `json:"fileNameToRemove"`

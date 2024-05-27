@@ -817,16 +817,6 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	// requestPayload := payload.DownloadFileBody{}
-	// isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
-	// if !isParseRequestPayloadSuccess {
-	// 	return
-	// }
-
-	// locationToDownload
-	// fileNameToDownload
-	// credential
-
 	folderLocation := c.Query("locationToDownload")
 	credential := c.Query("credential")
 	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
