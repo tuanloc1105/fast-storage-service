@@ -21,7 +21,7 @@ export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
     });
   } else {
     req = req.clone({
-      url: `${is_production ? '' : '/api'}${req.url}`,
+      url: `${is_production ? process.env['BACKEND_URL'] : '/api'}${req.url}`,
       setHeaders: {
         'ngrok-skip-browser-warning': 'pass',
       },
