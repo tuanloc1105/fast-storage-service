@@ -14,7 +14,12 @@ import { Directory } from '@app/shared/model';
 import { ImageSrcPipe } from '@app/shared/pipe';
 import { AppStore, StorageStore } from '@app/store';
 import { patchState } from '@ngrx/signals';
-import { MenuItem } from 'primeng/api';
+import {
+  ConfirmationService,
+  MenuItem,
+  MenuItemCommandEvent,
+  MessageService,
+} from 'primeng/api';
 import { BreadcrumbItemClickEvent, BreadcrumbModule } from 'primeng/breadcrumb';
 import { ButtonModule } from 'primeng/button';
 import { ContextMenuModule } from 'primeng/contextmenu';
@@ -22,6 +27,8 @@ import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
 import { environment } from 'environments/environment';
+import { LocalStorageJwtService } from '@app/shared/services';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-folder-detail',
@@ -47,6 +54,9 @@ export class FolderDetailComponent implements OnInit {
   public appStore = inject(AppStore);
 
   private readonly dialogService = inject(DialogService);
+  private readonly confirmationService = inject(ConfirmationService);
+  private readonly messageService = inject(MessageService);
+  private readonly localStorageJwtService = inject(LocalStorageJwtService);
 
   public home: MenuItem | undefined;
   public selectedDirectory: Directory | null = null;
@@ -98,7 +108,7 @@ export class FolderDetailComponent implements OnInit {
       {
         label: 'Delete',
         icon: 'pi pi-fw pi-times',
-        command: () => this.removeFile(),
+        command: (e) => this.removeFile(e),
       },
     ];
   }
@@ -162,20 +172,43 @@ export class FolderDetailComponent implements OnInit {
     });
   }
 
-  private downloadFile(): void {
-    this.storageStore.downloadFile({
-      request: {
-        fileNameToDownload: this.selectedDirectory?.name ?? '',
-        locationToDownload: this.storageStore.currentPath(),
-      },
-    });
+  private async downloadFile() {
+    const accessToken = await lastValueFrom(
+      this.localStorageJwtService.getAccessToken()
+    );
+    if (!accessToken || !this.selectedDirectory) return;
+
+    if (this.selectedDirectory.type === 'folder') {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Error',
+        detail: 'Download folder is not supported.',
+      });
+      return;
+    }
+
+    window.location.href = `${
+      environment.apiUrl
+    }/storage/download_file?fileNameToDownload=${
+      this.selectedDirectory?.name
+    }&locationToDownload=${this.storageStore.currentPath()}&token=${accessToken}`;
   }
 
-  private removeFile(): void {
-    this.storageStore.removeFile({
-      request: {
-        fileNameToRemove: this.selectedDirectory?.name ?? '',
-        locationToRemove: this.storageStore.currentPath(),
+  private removeFile(event: MenuItemCommandEvent): void {
+    this.confirmationService.confirm({
+      target: event.originalEvent?.target as EventTarget,
+      message: 'Do you want to delete this?',
+      header: 'Delete Confirmation',
+      icon: 'pi pi-info-circle',
+      acceptButtonStyleClass: 'p-button-danger p-button-text',
+      rejectButtonStyleClass: 'p-button-text p-button-text',
+      accept: () => {
+        this.storageStore.removeFile({
+          request: {
+            fileNameToRemove: this.selectedDirectory?.name ?? '',
+            locationToRemove: this.storageStore.currentPath(),
+          },
+        });
       },
     });
   }

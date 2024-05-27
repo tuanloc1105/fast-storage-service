@@ -28,6 +28,7 @@
       [(selection)]="selectedDocumentFolder"
       (selectionChange)="onNodeSelect($event)"
       (onNodeExpand)="onNodeExpand($event)"
+      (onNodeCollapse)="onNodeCollapse($event)"
     >
       <ng-template let-node pTemplate="default">
         <div class="flex items-center gap-1">

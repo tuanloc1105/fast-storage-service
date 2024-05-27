@@ -6,6 +6,7 @@
     "postinstall": "electron-builder install-app-deps",
     "serve:angular": "nx serve fast-storage",
     "serve:electron": "nx serve electron",
+    "build:angular": "nx build fast-storage --prod",
     "build:electron": "nx package electron"
   },
   "build": {

@@ -182,7 +182,10 @@ export const StorageStore = signalStore(
             return storageService.downloadFile(payload).pipe(
               tapResponse({
                 next: (res) => {
-                  const url = window.URL.createObjectURL(res.response);
+                  const blob = new Blob([res.response], {
+                    type: 'application/octet-stream',
+                  });
+                  const url = window.URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
                   a.download = payload.request.fileNameToDownload;
