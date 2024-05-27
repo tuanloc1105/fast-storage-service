@@ -211,17 +211,15 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 	listFileInDirectoryCommand := fmt.Sprintf("ls -lh '%s'", folderToView)
 	if listFileStdout, _, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
-		if listFileError != nil {
-			c.AbortWithStatusJSON(
-				http.StatusInternalServerError,
-				utils.ReturnResponse(
-					c,
-					constant.FolderNotExistError,
-					nil,
-				),
-			)
-			return
-		}
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+			),
+		)
+		return
 	} else {
 		lsCommandResultLineArray := strings.Split(listFileStdout, "\n")
 		if strings.Contains(listFileStdout, "total 0") && len(lsCommandResultLineArray) <= 1 {
@@ -235,22 +233,20 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 			)
 		} else {
 			listFileInDirectoryCommand += " | awk 'NR>1{printf \"%s !x&2 %s !x&2 %s\\n\", $1, $5, $9}'"
-			if listFileStdout, listFileStderr, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
-				if listFileStderr != "" || listFileError != nil {
-					c.AbortWithStatusJSON(
-						http.StatusInternalServerError,
-						utils.ReturnResponse(
-							c,
-							constant.ListFolderError,
-							nil,
-							listFileStderr+". "+listFileError.Error(),
-						),
-					)
-					return
-				}
+			if listOfFileWithAwkStdout, _, listOfFileWithAwkError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listOfFileWithAwkError != nil {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.ListFolderError,
+						nil,
+						listOfFileWithAwkError.Error(),
+					),
+				)
+				return
 			} else {
 				var listOfFileInformation []payload.FileInformation
-				commandResultLineArray := strings.Split(listFileStdout, "\n")
+				commandResultLineArray := strings.Split(listOfFileWithAwkStdout, "\n")
 				for _, element := range commandResultLineArray {
 					elementDetail := strings.Split(element, " !x&2 ")
 					if len(elementDetail) != 3 {
@@ -274,7 +270,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 
 					statCommand := fmt.Sprintf("stat '%s' | grep \"Modify\"", elementDetail[2])
 					statStdOut, statStdErr, statError := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommand, folderToView)
-					if statStdErr != "" || statError != nil {
+					if statError != nil {
 						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while get stat: \n- %s\n- %s", statStdErr, statError.Error())
 					}
 					if statStdOut != "" {
@@ -289,7 +285,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					if elementType == "file" {
 						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
 						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
-						if fileExtensionErrOut != "" || fileExtensionError != nil {
+						if fileExtensionError != nil {
 							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
 						}
 						fileInformation.Extension = strings.ToUpper(fileExtensionStdOut)
@@ -488,20 +484,20 @@ func (h StorageHandler) RenameFileOrFolder(c *gin.Context) {
 		return
 	}
 
-	remameFolderCommand := fmt.Sprintf("mv %s %s", oldFolderName, newFolderName)
+	renameFolderCommand := fmt.Sprintf("mv %s %s", oldFolderName, newFolderName)
 
-	_, remameFolderStdErr, remameFolderError := utils.Shellout(h.Ctx, remameFolderCommand)
-	if remameFolderStdErr != "" || remameFolderError != nil {
+	_, renameFolderStdErr, renameFolderError := utils.Shellout(h.Ctx, renameFolderCommand)
+	if renameFolderError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
-				constant.RemameFolderError,
+				constant.RenameFolderError,
 				nil,
 				fmt.Sprintf(
 					"cannot rename folder\n  - error 1: %s\n  - error 2: %s",
-					remameFolderStdErr,
-					remameFolderError.Error(),
+					renameFolderStdErr,
+					renameFolderError.Error(),
 				),
 			),
 		)
@@ -701,7 +697,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 
 	fileUpload := multipartForm.File["file"]
 
-	if fileUpload == nil || len(fileUpload) == 0 {
+	if fileUpload == nil || len(fileUpload) < 1 {
 		c.AbortWithStatusJSON(
 			http.StatusNotFound,
 			utils.ReturnResponse(
@@ -1143,27 +1139,38 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 		return
 	}
 
-	utils.EncryptPasswordPointer(&requestPayload.Request.Credential)
-	baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
-	userPasswordCredential := model.UserFolderCredential{
-		BaseEntity:               baseEntity,
-		Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
-		Directory:                folderToSecure,
-		Credential:               requestPayload.Request.Credential,
-		CredentialType:           requestPayload.Request.CredentialType,
-		LastFolderActivitiesTime: baseEntity.CreatedAt,
+	if encryptPasswordError := utils.EncryptPasswordPointer(&requestPayload.Request.Credential); encryptPasswordError != nil {
+		c.JSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.HashPasswordForSecuredFolderError,
+				nil,
+			),
+		)
+		return
+	} else {
+		baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+		userPasswordCredential := model.UserFolderCredential{
+			BaseEntity:               baseEntity,
+			Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
+			Directory:                folderToSecure,
+			Credential:               requestPayload.Request.Credential,
+			CredentialType:           requestPayload.Request.CredentialType,
+			LastFolderActivitiesTime: baseEntity.CreatedAt,
+		}
+
+		h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
+
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				nil,
+			),
+		)
 	}
-
-	h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
-
-	c.JSON(
-		http.StatusOK,
-		utils.ReturnResponse(
-			c,
-			constant.Success,
-			nil,
-		),
-	)
 }
 
 func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {

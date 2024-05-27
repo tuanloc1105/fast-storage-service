@@ -166,7 +166,7 @@ var (
 		ErrorCode:    1019,
 		ErrorMessage: "Cannot create file",
 	}
-	RemameFolderError = ErrorEnums{
+	RenameFolderError = ErrorEnums{
 		ErrorCode:    1020,
 		ErrorMessage: "Cannot rename folder",
 	}
@@ -177,5 +177,9 @@ var (
 	RenameSecuredDirectoryError = ErrorEnums{
 		ErrorCode:    1021,
 		ErrorMessage: "Cannot rename a secured folder",
+	}
+	HashPasswordForSecuredFolderError = ErrorEnums{
+		ErrorCode:    1022,
+		ErrorMessage: "Cannot secure folder due to hash password error",
 	}
 )
