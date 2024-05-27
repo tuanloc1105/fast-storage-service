@@ -65,12 +65,19 @@ func RequestLogger(c *gin.Context) {
 			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, strings.Join(v, ", "))
 		}
 	}
+	token := c.Request.Header.Get("Authorization")
+	var requestUri string
+	if token != "" {
+		requestUri = strings.Replace(c.Request.RequestURI, token, "***", -1)
+	} else {
+		requestUri = c.Request.RequestURI
+	}
 	var message string
 	if isPossibleToLogRequestPayload {
 		message = fmt.Sprintf(
 			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
 			headerString,
-			c.Request.RequestURI,
+			requestUri,
 			c.Request.Method,
 			c.Request.Proto,
 			dst.String(),
@@ -79,7 +86,7 @@ func RequestLogger(c *gin.Context) {
 		message = fmt.Sprintf(
 			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s",
 			headerString,
-			c.Request.RequestURI,
+			requestUri,
 			c.Request.Method,
 			c.Request.Proto,
 		)
@@ -134,12 +141,19 @@ func ResponseLogger(c *gin.Context) {
 	responseSizeKB := bytesToKB(int32((*blw).Size()))
 	statusCode := c.Writer.Status()
 	var message string
+	token := c.Request.Header.Get("Authorization")
+	var requestUri string
+	if token != "" {
+		requestUri = strings.Replace(c.Request.RequestURI, token, "***", -1)
+	} else {
+		requestUri = c.Request.RequestURI
+	}
 	if responseSizeKB > float64(10) {
 		message = fmt.Sprintf(
 			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB",
 			strconv.Itoa(statusCode),
 			c.Request.Method,
-			c.Request.RequestURI,
+			requestUri,
 			headerString,
 			responseSizeMB,
 		)
@@ -148,7 +162,7 @@ func ResponseLogger(c *gin.Context) {
 			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB\n\t- payload:\n\t%s",
 			strconv.Itoa(statusCode),
 			c.Request.Method,
-			c.Request.RequestURI,
+			requestUri,
 			headerString,
 			responseSizeMB,
 			blw.body.String(),
@@ -169,6 +183,14 @@ func ResponseLogger(c *gin.Context) {
 		HideSensitiveJsonField(message),
 	)
 
+}
+
+func GetTokenInParamAndSetToHeader() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		tokenToParam := c.Query("token")
+		c.Request.Header.Set("Authorization", tokenToParam)
+		c.Next()
+	}
 }
 
 func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
