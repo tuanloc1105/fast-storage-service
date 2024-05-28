@@ -1019,7 +1019,7 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 
 	zipFolderCommand := fmt.Sprintf("zip -r '%s.zip' '%s/'", folderToBeZipped, folderToBeZipped)
 
-	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation)
+	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation, true, false)
 	if zipError != nil {
 		log.WithLevel(constant.Warn, h.Ctx, "can not zip folder with error %s", zipError.Error())
 		c.AbortWithStatusJSON(
