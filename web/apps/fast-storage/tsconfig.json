@@ -12,7 +12,8 @@
     "baseUrl": "src",
     "paths": {
       "@app/*": ["app/*"]
-    }
+    },
+    "types": ["node"]
   },
   "files": [],
   "include": [],
