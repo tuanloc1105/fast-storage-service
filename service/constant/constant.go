@@ -182,4 +182,8 @@ var (
 		ErrorCode:    1022,
 		ErrorMessage: "Cannot secure folder due to hash password error",
 	}
+	ZipFolderError = ErrorEnums{
+		ErrorCode:    1023,
+		ErrorMessage: "Cannot zip folder",
+	}
 )

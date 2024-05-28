@@ -685,7 +685,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 		folderLocation = folderLocationArray[0]
 	}
 
-	if strings.Contains(folderLocation, "..") {
+	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
 			utils.ReturnResponse(
@@ -848,7 +848,7 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	credential := c.Query("credential")
 	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
 
-	if strings.Contains(folderLocation, "..") {
+	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
 			utils.ReturnResponse(
@@ -937,6 +937,144 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	c.Header("Cache-Control", "must-revalidate")
 	// c.Data(http.StatusOK, constant.ContentTypeBinary, fileData)
 	c.Writer.Write(fileData)
+}
+
+func (h StorageHandler) DownloadFolder(c *gin.Context) {
+
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	folderLocation := c.Query("locationToDownload")
+	credential := c.Query("credential")
+
+	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	if folderLocation == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`folderLocation` can not be empty",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToDownload := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToDownload, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	// folderToDownload is the location that will be zip
+	// but when zipping, the location to run command must be the outside folder
+	// so this line of codes will get the outside folder location
+	outsideFolderLocation := ""
+	baseNameCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", folderToDownload)
+	folderToBeZipped, _, baseNameCommandError := utils.Shellout(h.Ctx, baseNameCommand)
+	if baseNameCommandError != nil {
+		log.WithLevel(constant.Warn, h.Ctx, "can not get base name of folder with error %s", baseNameCommandError.Error())
+	} else {
+		outsideFolderLocation = strings.Replace(folderToDownload, folderToBeZipped, "", -1)
+	}
+
+	zipFolderCommand := fmt.Sprintf("zip -r '%s.zip' '%s/'", folderToBeZipped, folderToBeZipped)
+
+	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation)
+	if zipError != nil {
+		log.WithLevel(constant.Warn, h.Ctx, "can not zip folder with error %s", zipError.Error())
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.ZipFolderError,
+				nil,
+			),
+		)
+		return
+	}
+	fileToReturnToClient, openFileError := os.Open(outsideFolderLocation + folderToBeZipped + ".zip")
+	if openFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot open file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+openFileError.Error(),
+			),
+		)
+		return
+	}
+	defer func(file *os.File) {
+		closeFileError := file.Close()
+		if closeFileError != nil {
+			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+	}(fileToReturnToClient)
+
+	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
+	if readFileToReturnToClientError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot convert file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+readFileToReturnToClientError.Error(),
+			),
+		)
+		return
+	}
+
+	c.Status(200)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Type", constant.ContentTypeBinary)
+	c.Header("Content-Disposition", "attachment; filename="+folderToBeZipped+".zip")
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Expires", "0")
+	c.Header("Cache-Control", "must-revalidate")
+	c.Writer.Write(fileData)
+	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+folderToBeZipped+".zip", outsideFolderLocation)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {

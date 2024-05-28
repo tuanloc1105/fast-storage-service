@@ -22,6 +22,9 @@ const BytesPerGB = 1024 * 1024 * 1024
 const BytesPerMB = 1024 * 1024
 const BytesPerKB = 1024
 
+// handleProgressFolderToView will proccess the directory path from input,
+//
+// ensure that the result is the valid directory path
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
 	folderToView := ""
 
@@ -40,6 +43,7 @@ func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurr
 	return folderToView
 }
 
+// handleCheckUserMaximumStorage check that if current use have been set a limitation of storage size
 func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
 	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
 		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
