@@ -5,6 +5,7 @@ import { environment } from 'environments/environment';
 
 export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
   const is_production = environment.production;
+  const BACKEND_URL = import.meta.env.BACKEND_URL;
 
   let token: string | null = null;
   inject(LocalStorageJwtService)
@@ -13,7 +14,7 @@ export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
 
   if (token) {
     req = req.clone({
-      url: `${is_production ? process.env['BACKEND_URL'] : '/api'}${req.url}`,
+      url: `${is_production ? BACKEND_URL : '/api'}${req.url}`,
       setHeaders: {
         Authorization: `Bearer ${token}`,
         'ngrok-skip-browser-warning': 'pass',
@@ -21,7 +22,7 @@ export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
     });
   } else {
     req = req.clone({
-      url: `${is_production ? process.env['BACKEND_URL'] : '/api'}${req.url}`,
+      url: `${is_production ? BACKEND_URL : '/api'}${req.url}`,
       setHeaders: {
         'ngrok-skip-browser-warning': 'pass',
       },
