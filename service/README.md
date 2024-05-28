@@ -18,7 +18,9 @@ env info:
     "KEYCLOAK_ADMIN_PASSWORD": "admin",
     "ACCOUNT_ACTIVE_HOST": "http://localhost:8080",
     "NFS_HOST": "/dev/nvme0n1p7",
-    "MOUNT_FOLDER": "/mount"
+    "MOUNT_FOLDER": "/mount",
+    "OUTLOOK_USERNAME": "",
+    "OUTLOOK_PASSWORD": ""
 }
 ```
 

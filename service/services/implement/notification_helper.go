@@ -7,6 +7,7 @@ import (
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/log"
 	"fmt"
+	"os"
 	"strings"
 
 	"gopkg.in/gomail.v2"
@@ -25,10 +26,8 @@ type EmailProperties struct {
 func sendHtmlEmailContent(ctx context.Context, properties EmailProperties) error {
 	smtpHost := "smtp.office365.com"
 	smtpPort := 587
-	// username := os.Getenv("OUTLOOK_USERNAME")
-	// password := os.Getenv("OUTLOOK_PASSWORD")
-	username := "trink2003@gmail.com"
-	password := "7523168zxcASDQWE!@#"
+	username := os.Getenv("OUTLOOK_USERNAME")
+	password := os.Getenv("OUTLOOK_PASSWORD")
 
 	if username == "" || password == "" {
 		return errors.New("`OUTLOOK_USERNAME` and `OUTLOOK_PASSWORD` must be set in the environment variable")
