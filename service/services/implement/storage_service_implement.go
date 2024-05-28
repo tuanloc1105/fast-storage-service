@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +21,9 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+var FileAndFolderNameRegex *regexp.Regexp = regexp.MustCompile(`\d{2}:\d{2} (.+)$`)
+var SizeOfFileInStatCommandResultRegex *regexp.Regexp = regexp.MustCompile(`Size: (\d+)`)
 
 type StorageHandler struct {
 	DB  *gorm.DB
@@ -208,6 +211,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 		return
 
 	}
+	var listOfFileInformation []payload.FileInformation = []payload.FileInformation{}
 
 	listFileInDirectoryCommand := fmt.Sprintf("ls -lh '%s'", folderToView)
 	if listFileStdout, _, listFileError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listFileError != nil {
@@ -232,79 +236,98 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				),
 			)
 		} else {
-			listFileInDirectoryCommand += " | awk 'NR>1{printf \"%s !x&2 %s !x&2 %s\\n\", $1, $5, $9}'"
-			if listOfFileWithAwkStdout, _, listOfFileWithAwkError := utils.Shellout(h.Ctx, listFileInDirectoryCommand); listOfFileWithAwkError != nil {
-				c.AbortWithStatusJSON(
-					http.StatusInternalServerError,
-					utils.ReturnResponse(
-						c,
-						constant.ListFolderError,
-						nil,
-						listOfFileWithAwkError.Error(),
-					),
-				)
-				return
-			} else {
-				var listOfFileInformation []payload.FileInformation
-				commandResultLineArray := strings.Split(listOfFileWithAwkStdout, "\n")
-				for _, element := range commandResultLineArray {
-					elementDetail := strings.Split(element, " !x&2 ")
-					if len(elementDetail) != 3 {
-						continue
-					}
-					elementType := "file"
-					if strings.HasPrefix(elementDetail[0], "d") {
-						elementType = "folder"
-					}
-					fileNameWithExtension, fileNameUnescapeError := url.QueryUnescape(elementDetail[2])
-					if fileNameUnescapeError != nil {
-						fileNameWithExtension = ""
-					}
-					fileSize := elementDetail[1]
+			for lineIndex, line := range lsCommandResultLineArray {
+				if lineIndex < 1 {
+					continue
+				}
+				fileName := ""
+				fileSize := ""
+				fileExtension := ""
+				fileLastModifiedDate := ""
+				fileType := "file"
 
-					var fileInformation payload.FileInformation = payload.FileInformation{
-						Size: fileSize,
-						Name: fileNameWithExtension,
-						Type: elementType,
-					}
+				match := FileAndFolderNameRegex.FindStringSubmatch(line)
+				if len(match) > 1 {
+					fileName = match[1]
+				}
+				if fileName == "" {
+					continue
+				}
+				statCommandForNameOrFolder := fmt.Sprintf("stat '%s'", fileName)
+				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, false, false); infomationOfNameOrFolderErrors != nil {
+					log.WithLevel(constant.Warn, h.Ctx, "cannot execute stats: %s", infomationOfNameOrFolderErrors.Error())
+					continue
+				} else {
+					listOfLineOfInformation := strings.Split(infomationOfNameOrFolderStdout, "\n")
+					for informationLineIndex, informationLine := range listOfLineOfInformation {
+						fmt.Println("line ", informationLineIndex, ": ", informationLine)
+						// file/folder fileSize handler
+						if informationLineIndex == 1 {
+							if fileSizeMatch := SizeOfFileInStatCommandResultRegex.FindStringSubmatch(informationLine); fileSizeMatch != nil {
+								if len(fileSizeMatch) > 1 {
+									fileSizeInt64, fileSizeInt64ConvertError := strconv.ParseInt(fileSizeMatch[1], 10, 64)
+									if fileSizeInt64ConvertError != nil {
+										log.WithLevel(constant.Warn, h.Ctx, "cannot convert file size from string to int64 of file %s: %s", fileName, fileSizeInt64ConvertError.Error())
+									}
+									if fileSizeInt64 > BytesPerMB {
+										fileSize = fmt.Sprintf("%.4f %s", convertBytesToMB(fileSizeInt64), "MB")
+									} else {
+										fileSize = fmt.Sprintf("%.4f %s", convertBytesToKB(fileSizeInt64), "KB")
+									}
+									fmt.Println("fileSize is:", fileSize)
+								}
+							}
+						}
+						// file type handler
+						if informationLineIndex == 3 {
+							if strings.Contains(informationLine, "/d") {
+								fileType = "folder"
+							}
+						}
+						// last modified date handler
+						if informationLineIndex == 5 {
+							modifiedDateString := strings.TrimSpace(strings.Replace(informationLine, "Modify: ", "", -1))
+							fmt.Println("modifiedDateString is:", modifiedDateString)
+							if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
+								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
+							} else {
+								fileLastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
+							}
 
-					statCommand := fmt.Sprintf("stat '%s' | grep \"Modify\"", elementDetail[2])
-					statStdOut, statStdErr, statError := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommand, folderToView)
-					if statError != nil {
-						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while get stat: \n- %s\n- %s", statStdErr, statError.Error())
-					}
-					if statStdOut != "" {
-						modifiedDateString := strings.Replace(statStdOut, "Modify: ", "", -1)
-						if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
-							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
-						} else {
-							fileInformation.LastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
 						}
 					}
-
-					if elementType == "file" {
-						getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileNameWithExtension)
-						fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
-						if fileExtensionError != nil {
-							log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
-						}
-						fileInformation.Extension = strings.ToUpper(fileExtensionStdOut)
-					}
-
-					listOfFileInformation = append(listOfFileInformation, fileInformation)
 				}
 
-				c.JSON(
-					http.StatusOK,
-					utils.ReturnResponse(
-						c,
-						constant.Success,
-						listOfFileInformation,
-					),
-				)
+				// file extension handler
+				if fileType == "file" {
+					getFileExtensionCommand := fmt.Sprintf("basename '%s' | awk -F. '{print $NF}'", fileName)
+					fileExtensionStdOut, fileExtensionErrOut, fileExtensionError := utils.ShelloutAtSpecificDirectory(h.Ctx, getFileExtensionCommand, folderToView)
+					if fileExtensionError != nil {
+						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
+					}
+					fileExtension = strings.ToUpper(fileExtensionStdOut)
+					fmt.Println("fileExtension is:", fileExtension)
+				}
+
+				fileInfo := payload.FileInformation{
+					Size:             fileSize,
+					Name:             fileName,
+					Extension:        fileExtension,
+					LastModifiedDate: fileLastModifiedDate,
+					Type:             fileType,
+				}
+				listOfFileInformation = append(listOfFileInformation, fileInfo)
 			}
 		}
 	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			listOfFileInformation,
+		),
+	)
 }
 
 func (h StorageHandler) CreateFolder(c *gin.Context) {
@@ -586,7 +609,7 @@ func (h StorageHandler) CreateFile(c *gin.Context) {
 		}
 	}
 	fileNameToCreate := requestPayload.Request.FileNameToCreate + "." + requestPayload.Request.FileExtension
-	createFileWithTouchCommand := "touch " + url.QueryEscape(fileNameToCreate)
+	createFileWithTouchCommand := "touch " + fileNameToCreate
 
 	_, createFileStdErr, createFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, createFileWithTouchCommand, folderToCreate)
 	if createFileStdErr != "" || createFileError != nil {
@@ -770,7 +793,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 			fileUploadName += " (" + uuid.New().String() + ")"
 		}
 		finalFileNameToSave := fileUploadName + fileUploadExtension
-		finalFileLocation := folderToSaveFile + url.QueryEscape(finalFileNameToSave)
+		finalFileLocation := folderToSaveFile + finalFileNameToSave
 
 		if saveUploadedFileError := c.SaveUploadedFile(file, finalFileLocation); saveUploadedFileError != nil {
 			c.AbortWithStatusJSON(
@@ -864,14 +887,8 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 
 	}
 
-	fileNameToDownload := url.QueryEscape(fileNameToDownloadFromRequest)
-	finalFileName := ""
-	if unescapedFileName, unescapedFileNameError := url.QueryUnescape(fileNameToDownload); unescapedFileNameError == nil {
-		finalFileName = unescapedFileName
-	} else {
-		finalFileName = fileNameToDownload
-	}
-	// c.FileAttachment(folderToView+fileNameToDownload, fileNameToDownload)
+	fileNameToDownload := fileNameToDownloadFromRequest
+	finalFileName := fileNameToDownload
 	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
 	if openFileError != nil {
 		c.AbortWithStatusJSON(
@@ -989,7 +1006,7 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 
 	}
 
-	fileNameToDownload := url.QueryEscape(requestPayload.Request.FileNameToRemove)
+	fileNameToDownload := requestPayload.Request.FileNameToRemove
 
 	removeFileCommand := fmt.Sprintf("rm -rf %s", folderToView+fileNameToDownload)
 
