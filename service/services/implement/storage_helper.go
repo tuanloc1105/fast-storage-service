@@ -18,7 +18,7 @@ import (
 const KbPerMB = 1024.0
 const MbPerGB = 1024.0
 
-// const BytesPerGB = 1024 * 1024 * 1024
+const BytesPerGB = 1024 * 1024 * 1024
 const BytesPerMB = 1024 * 1024
 const BytesPerKB = 1024
 
@@ -200,9 +200,9 @@ func convertGBToMB(gb float64) float64 {
 	return gb * MbPerGB
 }
 
-// func convertBytesToGB(bytes int64) float64 {
-// 	return float64(bytes) / float64(BytesPerGB)
-// }
+func convertBytesToGB(bytes int64) float64 {
+	return float64(bytes) / float64(BytesPerGB)
+}
 
 func convertBytesToMB(bytes int64) float64 {
 	return float64(bytes) / float64(BytesPerMB)

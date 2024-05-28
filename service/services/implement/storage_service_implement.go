@@ -269,10 +269,14 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 									if fileSizeInt64ConvertError != nil {
 										log.WithLevel(constant.Warn, h.Ctx, "cannot convert file size from string to int64 of file %s: %s", fileName, fileSizeInt64ConvertError.Error())
 									}
-									if fileSizeInt64 > BytesPerMB {
-										fileSize = fmt.Sprintf("%.4f %s", convertBytesToMB(fileSizeInt64), "MB")
-									} else {
+									if BytesPerKB <= fileSizeInt64 && fileSizeInt64 < BytesPerMB {
 										fileSize = fmt.Sprintf("%.4f %s", convertBytesToKB(fileSizeInt64), "KB")
+									} else if BytesPerMB <= fileSizeInt64 && fileSizeInt64 < BytesPerGB {
+										fileSize = fmt.Sprintf("%.4f %s", convertBytesToMB(fileSizeInt64), "MB")
+									} else if BytesPerGB <= fileSizeInt64 {
+										fileSize = fmt.Sprintf("%.4f %s", convertBytesToGB(fileSizeInt64), "GB")
+									} else {
+										fileSize = fmt.Sprintf("%d %s", fileSizeInt64, "byte(s)")
 									}
 									fmt.Println("fileSize is:", fileSize)
 								}
