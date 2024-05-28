@@ -18,3 +18,7 @@ keycloak_admin_password: YWRtaW4=
 account_active_host: https://polliwog-one-rarely.ngrok-free.app
 nfs_host: 192.168.1.22
 mount_folder: /mount/
+smtp_host: smtp.office365.com
+smtp_port: 587
+outlook_username: username
+outlook_password: cGFzc3dvcmQK

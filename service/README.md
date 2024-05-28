@@ -19,6 +19,8 @@ env info:
     "ACCOUNT_ACTIVE_HOST": "http://localhost:8080",
     "NFS_HOST": "/dev/nvme0n1p7",
     "MOUNT_FOLDER": "/mount",
+    "SMTP_HOST": "smtp.office365.com",
+    "SMTP_PORT": "587",
     "OUTLOOK_USERNAME": "",
     "OUTLOOK_PASSWORD": ""
 }

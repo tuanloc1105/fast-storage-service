@@ -8,6 +8,7 @@ import (
 	"fast-storage-go-service/log"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/gomail.v2"
@@ -24,10 +25,16 @@ type EmailProperties struct {
 }
 
 func sendHtmlEmailContent(ctx context.Context, properties EmailProperties) error {
-	smtpHost := "smtp.office365.com"
-	smtpPort := 587
+	// smtpHost := "smtp.office365.com"
+	// smtpPort := 587
+	smtpHost := os.Getenv("SMTP_HOST")
+	smtpPort := os.Getenv("SMTP_PORT")
 	username := os.Getenv("OUTLOOK_USERNAME")
 	password := os.Getenv("OUTLOOK_PASSWORD")
+
+	if smtpHost == "" || smtpPort == "" {
+		return errors.New("`SMTP_HOST` and `SMTP_PORT` must be set in the environment variable")
+	}
 
 	if username == "" || password == "" {
 		return errors.New("`OUTLOOK_USERNAME` and `OUTLOOK_PASSWORD` must be set in the environment variable")
@@ -65,7 +72,14 @@ func sendHtmlEmailContent(ctx context.Context, properties EmailProperties) error
 		}
 	}
 
-	goMailDialer := gomail.NewDialer(smtpHost, smtpPort, username, password)
+	smtpPortInt, smtpPortConvertToIntError := strconv.Atoi(smtpPort)
+
+	if smtpPortConvertToIntError != nil {
+		log.WithLevel(constant.Error, ctx, "Could not send email: %v", smtpPortConvertToIntError)
+		return smtpPortConvertToIntError
+	}
+
+	goMailDialer := gomail.NewDialer(smtpHost, smtpPortInt, username, password)
 	goMailDialer.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	if sendEmailError := goMailDialer.DialAndSend(goMailMessage); sendEmailError != nil {
 		log.WithLevel(constant.Error, ctx, "Could not send email: %v", sendEmailError)

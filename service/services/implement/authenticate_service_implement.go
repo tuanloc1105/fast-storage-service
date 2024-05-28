@@ -327,7 +327,7 @@ func (h AuthenticateHandler) Register(c *gin.Context) {
 			htmlContentToBeSent = strings.Replace(htmlContentToBeSent, "${activation_link}", accountActivationLink, -1)
 			emailProperties := EmailProperties{
 				To:      []string{requestPayload.Request.Email},
-				Subject: "Activation account link",
+				Subject: "ACTIVATION ACCOUNT LINK",
 				Content: htmlContentToBeSent,
 			}
 			sendHtmlEmailContent(h.Ctx, emailProperties)
