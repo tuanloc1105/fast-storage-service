@@ -13,19 +13,19 @@ import (
 	"strings"
 )
 
-func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBodyValue) error {
+func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBodyValue) (string, error) {
 
 	if strings.Compare(input.Password, input.ConfirmPassword) != 0 {
-		return errors.New("password and confirm password is not same")
+		return "", errors.New("password and confirm password is not same")
 	}
 
 	// login with admin to register user
 	if adminProtocolOpenidConnectToken, protocolOpenidConnectTokenError := KeycloakLogin(ctx, config.KeycloakAdminUsername, config.KeycloakAdminPassword); protocolOpenidConnectTokenError != nil {
-		return protocolOpenidConnectTokenError
+		return "", protocolOpenidConnectTokenError
 	} else {
 
 		if adminProtocolOpenidConnectToken.Error != "" {
-			return errors.New(adminProtocolOpenidConnectToken.ErrorDescription)
+			return "", errors.New(adminProtocolOpenidConnectToken.ErrorDescription)
 		}
 
 		// register user
@@ -47,26 +47,28 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 		shellStdout, _, shellError := utils.Shellout(ctx, userRegisterCurlCommand)
 		if shellError != nil {
 			log.WithLevel(constant.Info, ctx, "an error has been occurred: %s", shellError.Error())
-			return shellError
+			return "", shellError
 		}
 
 		keycloakCommonError := payload.KeycloakCommonErrorResponse{}
 		utils.JsonToStruct(shellStdout, &keycloakCommonError)
 
 		if keycloakCommonError.Error != "" {
-			return errors.New(keycloakCommonError.ErrorDescription)
+			return "", errors.New(keycloakCommonError.ErrorDescription)
 		}
 
 		if keycloakCommonError.ErrorMessage != "" {
-			return errors.New(keycloakCommonError.ErrorMessage)
+			return "", errors.New(keycloakCommonError.ErrorMessage)
 		}
+
+		var activeLink string
 
 		// get user id after created
 		if userSearchingResult, userSearchingResultError := KeycloakSearchUser(ctx, adminProtocolOpenidConnectToken.AccessToken, registerUserRequest.Email); userSearchingResultError != nil {
-			return userSearchingResultError
+			return "", userSearchingResultError
 		} else {
 			if len(userSearchingResult) != 1 {
-				return errors.New("can not create user")
+				return "", errors.New("can not create user")
 			}
 			// set password for user
 			resetPasswordInput := payload.ResetPasswordKeycloakInput{
@@ -84,16 +86,16 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 			resetPasswordShellStdout, _, resetPasswordShellError := utils.Shellout(ctx, resetPasswordCurlCommand)
 			if resetPasswordShellError != nil {
 				log.WithLevel(constant.Info, ctx, "an error has been occurred: %s", resetPasswordShellError.Error())
-				return resetPasswordShellError
+				return "", resetPasswordShellError
 			}
 			utils.JsonToStruct(resetPasswordShellStdout, &keycloakCommonError)
 
 			if keycloakCommonError.Error != "" {
-				return errors.New(keycloakCommonError.ErrorDescription)
+				return "", errors.New(keycloakCommonError.ErrorDescription)
 			}
 
 			if keycloakCommonError.ErrorMessage != "" {
-				return errors.New(keycloakCommonError.ErrorMessage)
+				return "", errors.New(keycloakCommonError.ErrorMessage)
 			}
 
 			activeHost, activeHostSet := os.LookupEnv("ACCOUNT_ACTIVE_HOST")
@@ -102,10 +104,10 @@ func KeycloakUserRegister(ctx context.Context, input payload.RegisterRequestBody
 				activeHost = "http://localhost:8080"
 			}
 
-			activeLink := fmt.Sprintf("%s/fast_storage/api/v1/auth/active_account?userId=%s&username=%s", activeHost, userSearchingResult[0].ID, userSearchingResult[0].Username)
+			activeLink = fmt.Sprintf("%s/fast_storage/api/v1/auth/active_account?userId=%s&username=%s", activeHost, userSearchingResult[0].ID, userSearchingResult[0].Username)
 			log.WithLevel(constant.Info, ctx, "active link for user: %s", activeLink)
 		}
 
-		return nil
+		return activeLink, nil
 	}
 }
