@@ -232,9 +232,10 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				utils.ReturnResponse(
 					c,
 					constant.Success,
-					nil,
+					listOfFileInformation,
 				),
 			)
+			return
 		} else {
 			for lineIndex, line := range lsCommandResultLineArray {
 				if lineIndex < 1 {

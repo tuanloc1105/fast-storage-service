@@ -1,6 +1,7 @@
 FROM tuanloc/my_ubuntu:latest as build
 WORKDIR /app
 COPY . .
+RUN pnpm setup
 RUN pnpm install
 RUN nx build fast-storage
 
