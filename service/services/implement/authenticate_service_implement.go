@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fast-storage-go-service/constant"
 	"fast-storage-go-service/keycloak"
+	"fast-storage-go-service/log"
 	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -302,7 +304,7 @@ func (h AuthenticateHandler) Register(c *gin.Context) {
 		return
 	}
 
-	if registerUserError := keycloak.KeycloakUserRegister(h.Ctx, requestPayload.Request); registerUserError != nil {
+	if accountActivationLink, registerUserError := keycloak.KeycloakUserRegister(h.Ctx, requestPayload.Request); registerUserError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
 			utils.ReturnResponse(
@@ -313,15 +315,34 @@ func (h AuthenticateHandler) Register(c *gin.Context) {
 			),
 		)
 		return
+	} else {
+		// send activation link to user via email
+
+		catHtmlEmailFileCommand := "cat additional_source_code/activation_email.html"
+
+		if htmlFileContentStdout, _, catHtmlEmailError := utils.Shellout(h.Ctx, catHtmlEmailFileCommand); catHtmlEmailError != nil {
+			log.WithLevel(constant.Error, ctx, "Could not view content of html file: %v", htmlFileContentStdout)
+		} else {
+			htmlContentToBeSent := strings.Replace(htmlFileContentStdout, "${username}", requestPayload.Request.Username, -1)
+			htmlContentToBeSent = strings.Replace(htmlContentToBeSent, "${activation_link}", accountActivationLink, -1)
+			emailProperties := EmailProperties{
+				To:      []string{requestPayload.Request.Email},
+				Subject: "ACTIVATION ACCOUNT LINK",
+				Content: htmlContentToBeSent,
+			}
+			sendHtmlEmailContent(h.Ctx, emailProperties)
+		}
+
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				nil,
+			),
+		)
 	}
-	c.JSON(
-		http.StatusOK,
-		utils.ReturnResponse(
-			c,
-			constant.Success,
-			nil,
-		),
-	)
+
 }
 
 func (h AuthenticateHandler) ActiveAccount(c *gin.Context) {

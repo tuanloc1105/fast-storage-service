@@ -15,6 +15,16 @@ import (
 	"gorm.io/gorm"
 )
 
+const KbPerMB = 1024.0
+const MbPerGB = 1024.0
+
+const BytesPerGB = 1024 * 1024 * 1024
+const BytesPerMB = 1024 * 1024
+const BytesPerKB = 1024
+
+// handleProgressFolderToView will proccess the directory path from input,
+//
+// ensure that the result is the valid directory path
 func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurrentLocation string) string {
 	folderToView := ""
 
@@ -33,6 +43,7 @@ func handleProgressFolderToView(ctx context.Context, systemRootFolder, inputCurr
 	return folderToView
 }
 
+// handleCheckUserMaximumStorage check that if current use have been set a limitation of storage size
 func handleCheckUserMaximumStorage(ctx context.Context, db *gorm.DB) error {
 	if authorizedUsernameFromContext := ctx.Value(constant.UsernameLogKey); authorizedUsernameFromContext != nil {
 		if currentUsername, isCurrentUsernameConvertableToString := authorizedUsernameFromContext.(string); isCurrentUsernameConvertableToString {
@@ -186,16 +197,21 @@ func folderIsSecure(ctx context.Context, db *gorm.DB, folderToCheck string) bool
 }
 
 func convertKBToMB(kb float64) float64 {
-	const kbPerMB = 1024.0
-	return kb / kbPerMB
+	return kb / KbPerMB
 }
 
 func convertGBToMB(gb float64) float64 {
-	const mbPerGB = 1024.0
-	return gb * mbPerGB
+	return gb * MbPerGB
+}
+
+func convertBytesToGB(bytes int64) float64 {
+	return float64(bytes) / float64(BytesPerGB)
 }
 
 func convertBytesToMB(bytes int64) float64 {
-	const bytesPerMB = 1024 * 1024
-	return float64(bytes) / float64(bytesPerMB)
+	return float64(bytes) / float64(BytesPerMB)
+}
+
+func convertBytesToKB(bytes int64) float64 {
+	return float64(bytes) / float64(BytesPerKB)
 }

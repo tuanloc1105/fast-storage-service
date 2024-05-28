@@ -13,3 +13,6 @@ data:
   account_active_host: {{ .Values.account_active_host | quote }}
   nfs_host: {{ .Values.nfs_host | quote }}
   mount_folder: {{ .Values.mount_folder | quote }}
+  outlook_username: {{ .Values.outlook_username | quote }}
+  smtp_host: {{ .Values.smtp_host | quote }}
+  smtp_port: {{ .Values.smtp_port | quote }}

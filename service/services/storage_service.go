@@ -14,4 +14,5 @@ type StorageService interface {
 	CheckSecureFolderStatus(c *gin.Context)
 	CreateFile(c *gin.Context)
 	RenameFileOrFolder(c *gin.Context)
+	DownloadFolder(c *gin.Context)
 }

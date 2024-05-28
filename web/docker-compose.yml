@@ -1,6 +1,6 @@
 services:
   web:
-    container_name: web
-    image: web:latest
+    container_name: fast-storage-web
+    image: fast-storage-service:latest
     ports:
-      - "90:80"
+      - "80:80"

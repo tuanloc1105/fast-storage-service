@@ -72,8 +72,8 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	exitCode := cmd.ProcessState.ExitCode()
-	stdoutString := strings.TrimSuffix(stdout.String(), "\n")
-	stderrString := stderr.String()
+	stdoutString := strings.TrimPrefix(strings.TrimSuffix(stdout.String(), "\n"), "\n")
+	stderrString := strings.TrimPrefix(strings.TrimSuffix(stderr.String(), "\n"), "\n")
 	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
 		log.WithLevel(
 			constant.Info,
@@ -140,8 +140,8 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	exitCode := cmd.ProcessState.ExitCode()
-	stdoutString := strings.TrimSuffix(stdout.String(), "\n")
-	stderrString := stderr.String()
+	stdoutString := strings.TrimPrefix(strings.TrimSuffix(stdout.String(), "\n"), "\n")
+	stderrString := strings.TrimPrefix(strings.TrimSuffix(stderr.String(), "\n"), "\n")
 	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
 		log.WithLevel(
 			constant.Info,
