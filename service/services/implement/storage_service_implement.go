@@ -1404,3 +1404,212 @@ func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
 		),
 	)
 }
+
+func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	folderLocation := c.Query("locationToRead")
+	credential := c.Query("credential")
+	fileNameToReadFromRequest := c.Query("fileNameToRead")
+
+	if folderLocation == "" || fileNameToReadFromRequest == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`locationToRead` and `fileNameToRead` can not be empty",
+			),
+		)
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	checkIfFileIsTextFileCommand := "file " + fileNameToReadFromRequest
+	checkIfFileIsTextStdout, _, checkIfFileIsTextError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkIfFileIsTextFileCommand, folderToView)
+	if checkIfFileIsTextError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"can not view file",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(checkIfFileIsTextStdout, "text") {
+		catFileContentCommand := "cat " + fileNameToReadFromRequest
+		catFileContentStdout, _, catFileContentError := utils.ShelloutAtSpecificDirectory(h.Ctx, catFileContentCommand, folderToView)
+		if catFileContentError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.InternalFailure,
+					nil,
+					"can not view file",
+				),
+			)
+			return
+		}
+
+		// get file extension
+		var extension string
+		fileNameArrayAfterSplitDot := strings.Split(fileNameToReadFromRequest, ".")
+		if len(fileNameArrayAfterSplitDot) == 0 {
+			extension = "txt"
+		} else {
+			extension = fileNameArrayAfterSplitDot[len(fileNameArrayAfterSplitDot)-1]
+		}
+
+		fileContentInMarkdownSyntax := fmt.Sprintf("```%s\n%s\n```", extension, catFileContentStdout)
+
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeText,
+			[]byte(fileContentInMarkdownSyntax),
+		)
+	} else {
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeText,
+			[]byte(``),
+		)
+	}
+}
+
+func (h StorageHandler) EditTextFileContent(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if c.Request.Header.Get("Content-Type") != "text/plain" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Content-Type must be text/plain",
+			),
+		)
+		return
+	}
+
+	folderLocation := c.Query("locationToEdit")
+	credential := c.Query("credential")
+	fileNameToEditFromRequest := c.Query("fileNameToEdit")
+	if folderLocation == "" || fileNameToEditFromRequest == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`locationToEdit` and `fileNameToEdit` can not be empty",
+			),
+		)
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	rawData, readRequestBodyError := io.ReadAll(c.Request.Body)
+	if readRequestBodyError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				fmt.Sprintf("can not read content that you want to edit: %v", readRequestBodyError),
+			),
+		)
+		return
+	}
+
+	// check if file exist or not
+	checkFileExistenceCommand := "ls " + fileNameToEditFromRequest
+	_, _, checkFileExistenceError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkFileExistenceCommand, folderToView)
+	if checkFileExistenceError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				fmt.Sprintf("file does not exist: %v", checkFileExistenceError),
+			),
+		)
+		return
+	}
+
+	contentToEdit := string(rawData)
+
+	editFileCommand := fmt.Sprintf(
+		`cat <<EOF > %s
+%s
+EOF`,
+		fileNameToEditFromRequest,
+		contentToEdit,
+	)
+
+	_, _, editFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, editFileCommand, folderToView)
+	if editFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				fmt.Sprintf("can not edit file: %v", editFileError),
+			),
+		)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
