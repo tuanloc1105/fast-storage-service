@@ -963,6 +963,7 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 
 	folderLocation := c.Query("locationToDownload")
 	credential := c.Query("credential")
+	archiveType := c.Query("archiveType")
 
 	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
 		c.AbortWithStatusJSON(
@@ -1016,9 +1017,23 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		log.WithLevel(constant.Warn, h.Ctx, "can not get base name of folder with error %s", baseNameCommandError.Error())
 	} else {
 		outsideFolderLocation = strings.Replace(folderToDownload, folderToBeZipped, "", -1)
+		outsideFolderLocation = strings.Replace(outsideFolderLocation, "//", "/", -1)
 	}
+	var zipFolderCommand string
+	var zipExtension string
+	zipFileName := folderToBeZipped + "-" + time.Now().Format(constant.RarFileTimeLayout)
+	switch archiveType {
+	case "zip":
+		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".zip"
+	case "rar":
+		zipFolderCommand = fmt.Sprintf("rar a -r -m5 '%s.rar' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".rar"
+	default:
+		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".zip"
 
-	zipFolderCommand := fmt.Sprintf("zip -r '%s.zip' '%s/'", folderToBeZipped, folderToBeZipped)
+	}
 
 	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation, true, false)
 	if zipError != nil {
@@ -1033,15 +1048,16 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		)
 		return
 	}
-	fileToReturnToClient, openFileError := os.Open(outsideFolderLocation + folderToBeZipped + ".zip")
+	fileToReturnToClient, openFileError := os.Open(outsideFolderLocation + zipFileName + zipExtension)
 	if openFileError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.DownloadFileError,
 				nil,
-				"cannot open file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+openFileError.Error(),
+				"cannot open file "+outsideFolderLocation+zipFileName+zipExtension+" to download. "+openFileError.Error(),
 			),
 		)
 		return
@@ -1055,13 +1071,14 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 
 	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
 	if readFileToReturnToClientError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.DownloadFileError,
 				nil,
-				"cannot convert file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+readFileToReturnToClientError.Error(),
+				"cannot convert file "+outsideFolderLocation+zipFileName+zipExtension+" to download. "+readFileToReturnToClientError.Error(),
 			),
 		)
 		return
@@ -1070,12 +1087,12 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	c.Status(200)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Type", constant.ContentTypeBinary)
-	c.Header("Content-Disposition", "attachment; filename="+folderToBeZipped+".zip")
+	c.Header("Content-Disposition", "attachment; filename="+zipFileName+zipExtension)
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Expires", "0")
 	c.Header("Cache-Control", "must-revalidate")
 	c.Writer.Write(fileData)
-	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+folderToBeZipped+".zip", outsideFolderLocation)
+	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
