@@ -232,9 +232,10 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				utils.ReturnResponse(
 					c,
 					constant.Success,
-					nil,
+					listOfFileInformation,
 				),
 			)
+			return
 		} else {
 			for lineIndex, line := range lsCommandResultLineArray {
 				if lineIndex < 1 {
@@ -962,6 +963,7 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 
 	folderLocation := c.Query("locationToDownload")
 	credential := c.Query("credential")
+	archiveType := c.Query("archiveType")
 
 	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
 		c.AbortWithStatusJSON(
@@ -1015,9 +1017,23 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		log.WithLevel(constant.Warn, h.Ctx, "can not get base name of folder with error %s", baseNameCommandError.Error())
 	} else {
 		outsideFolderLocation = strings.Replace(folderToDownload, folderToBeZipped, "", -1)
+		outsideFolderLocation = strings.Replace(outsideFolderLocation, "//", "/", -1)
 	}
+	var zipFolderCommand string
+	var zipExtension string
+	zipFileName := folderToBeZipped + "-" + time.Now().Format(constant.RarFileTimeLayout)
+	switch archiveType {
+	case "zip":
+		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".zip"
+	case "rar":
+		zipFolderCommand = fmt.Sprintf("rar a -r -m5 '%s.rar' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".rar"
+	default:
+		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
+		zipExtension = ".zip"
 
-	zipFolderCommand := fmt.Sprintf("zip -r '%s.zip' '%s/'", folderToBeZipped, folderToBeZipped)
+	}
 
 	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation, true, false)
 	if zipError != nil {
@@ -1032,15 +1048,16 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		)
 		return
 	}
-	fileToReturnToClient, openFileError := os.Open(outsideFolderLocation + folderToBeZipped + ".zip")
+	fileToReturnToClient, openFileError := os.Open(outsideFolderLocation + zipFileName + zipExtension)
 	if openFileError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.DownloadFileError,
 				nil,
-				"cannot open file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+openFileError.Error(),
+				"cannot open file "+outsideFolderLocation+zipFileName+zipExtension+" to download. "+openFileError.Error(),
 			),
 		)
 		return
@@ -1054,13 +1071,14 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 
 	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
 	if readFileToReturnToClientError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.DownloadFileError,
 				nil,
-				"cannot convert file "+outsideFolderLocation+folderToBeZipped+".zip"+" to download. "+readFileToReturnToClientError.Error(),
+				"cannot convert file "+outsideFolderLocation+zipFileName+zipExtension+" to download. "+readFileToReturnToClientError.Error(),
 			),
 		)
 		return
@@ -1069,12 +1087,12 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	c.Status(200)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Type", constant.ContentTypeBinary)
-	c.Header("Content-Disposition", "attachment; filename="+folderToBeZipped+".zip")
+	c.Header("Content-Disposition", "attachment; filename="+zipFileName+zipExtension)
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Expires", "0")
 	c.Header("Cache-Control", "must-revalidate")
 	c.Writer.Write(fileData)
-	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+folderToBeZipped+".zip", outsideFolderLocation)
+	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
@@ -1400,6 +1418,215 @@ func (h StorageHandler) CheckSecureFolderStatus(c *gin.Context) {
 			c,
 			constant.Success,
 			false,
+		),
+	)
+}
+
+func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	folderLocation := c.Query("locationToRead")
+	credential := c.Query("credential")
+	fileNameToReadFromRequest := c.Query("fileNameToRead")
+
+	if folderLocation == "" || fileNameToReadFromRequest == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`locationToRead` and `fileNameToRead` can not be empty",
+			),
+		)
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	checkIfFileIsTextFileCommand := "file " + fileNameToReadFromRequest
+	checkIfFileIsTextStdout, _, checkIfFileIsTextError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkIfFileIsTextFileCommand, folderToView)
+	if checkIfFileIsTextError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"can not view file",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(checkIfFileIsTextStdout, "text") {
+		catFileContentCommand := "cat " + fileNameToReadFromRequest
+		catFileContentStdout, _, catFileContentError := utils.ShelloutAtSpecificDirectory(h.Ctx, catFileContentCommand, folderToView)
+		if catFileContentError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.InternalFailure,
+					nil,
+					"can not view file",
+				),
+			)
+			return
+		}
+
+		// get file extension
+		var extension string
+		fileNameArrayAfterSplitDot := strings.Split(fileNameToReadFromRequest, ".")
+		if len(fileNameArrayAfterSplitDot) == 0 {
+			extension = "txt"
+		} else {
+			extension = fileNameArrayAfterSplitDot[len(fileNameArrayAfterSplitDot)-1]
+		}
+
+		fileContentInMarkdownSyntax := fmt.Sprintf("```%s\n%s\n```", extension, catFileContentStdout)
+
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeText,
+			[]byte(fileContentInMarkdownSyntax),
+		)
+	} else {
+		c.Data(
+			http.StatusOK,
+			constant.ContentTypeText,
+			[]byte(``),
+		)
+	}
+}
+
+func (h StorageHandler) EditTextFileContent(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if c.Request.Header.Get("Content-Type") != "text/plain" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Content-Type must be text/plain",
+			),
+		)
+		return
+	}
+
+	folderLocation := c.Query("locationToEdit")
+	credential := c.Query("credential")
+	fileNameToEditFromRequest := c.Query("fileNameToEdit")
+	if folderLocation == "" || fileNameToEditFromRequest == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`locationToEdit` and `fileNameToEdit` can not be empty",
+			),
+		)
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	rawData, readRequestBodyError := io.ReadAll(c.Request.Body)
+	if readRequestBodyError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				fmt.Sprintf("can not read content that you want to edit: %v", readRequestBodyError),
+			),
+		)
+		return
+	}
+
+	// check if file exist or not
+	checkFileExistenceCommand := "ls " + fileNameToEditFromRequest
+	_, _, checkFileExistenceError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkFileExistenceCommand, folderToView)
+	if checkFileExistenceError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				fmt.Sprintf("file does not exist: %v", checkFileExistenceError),
+			),
+		)
+		return
+	}
+
+	contentToEdit := string(rawData)
+
+	editFileCommand := fmt.Sprintf(
+		`cat <<EOF > %s
+%s
+EOF`,
+		fileNameToEditFromRequest,
+		contentToEdit,
+	)
+
+	_, _, editFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, editFileCommand, folderToView)
+	if editFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				fmt.Sprintf("can not edit file: %v", editFileError),
+			),
+		)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
 		),
 	)
 }

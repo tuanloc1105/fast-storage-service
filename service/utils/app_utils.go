@@ -107,12 +107,13 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 }
 
 func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string, isLog ...bool) (string, string, error) {
-	if len(isLog) < 1 || (len(isLog) == 1 && isLog[0]) {
+	if len(isLog) < 1 || (len(isLog) >= 1 && isLog[0]) {
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"Start to executing command: %s",
+			"start to execute a command at directory:\n\t- command: %s\n\t- directory: %s",
 			HideSensitiveInformationOfCurlCommand(command),
+			directory,
 		)
 	}
 	if directory == "" {
@@ -142,7 +143,7 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 	exitCode := cmd.ProcessState.ExitCode()
 	stdoutString := strings.TrimPrefix(strings.TrimSuffix(stdout.String(), "\n"), "\n")
 	stderrString := strings.TrimPrefix(strings.TrimSuffix(stderr.String(), "\n"), "\n")
-	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
+	if len(isLog) < 1 || (len(isLog) >= 2 && isLog[1]) {
 		log.WithLevel(
 			constant.Info,
 			ctx,

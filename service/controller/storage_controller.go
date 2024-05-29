@@ -101,4 +101,17 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		handler.CheckSecureFolderStatus,
 		utils.ErrorHandler)
 
+	storageRouter.GET("/read_text_file_content",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.ReadTextFileContent,
+		utils.ErrorHandler)
+
+	storageRouter.POST("/edit_text_file_content",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.EditTextFileContent,
+		utils.ErrorHandler)
 }

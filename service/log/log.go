@@ -58,45 +58,40 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 	}
 	switch level {
 	case constant.Info:
-		log.Info(
-			message,
-		)
+		log.Info(message)
 	case constant.Warn:
-		log.Warn(
-			message,
-		)
+		log.Warn(message)
 	case constant.Error:
-		log.Error(
-			message,
-		)
+		log.Error(message)
 	case constant.Debug:
-		log.Debug(
-			message,
-		)
+		log.Debug(message)
 	default:
-		log.Info(
-			message,
-		)
+		log.Info(message)
 	}
 
-	host, token, source, sourcetype, index, splunkInfoIsFullSetInEnv := GetSplunkInformationFromEnvironment()
+	sendLogToSplunkChan := make(chan struct{})
 
-	if splunkInfoIsFullSetInEnv {
-		splunkClient := splunk.NewClient(
-			nil,
-			host,
-			token,
-			source,
-			sourcetype,
-			index,
-		)
-		err := splunkClient.Log(
-			message,
-		)
-		if err != nil {
-			log.Error(err)
+	go func(done chan struct{}) {
+		defer close(done)
+		host, token, source, sourcetype, index, splunkInfoIsFullSetInEnv := GetSplunkInformationFromEnvironment()
+
+		if splunkInfoIsFullSetInEnv {
+			splunkClient := splunk.NewClient(
+				nil,
+				host,
+				token,
+				source,
+				sourcetype,
+				index,
+			)
+			err := splunkClient.Log(
+				message,
+			)
+			if err != nil {
+				log.Error(err)
+			}
 		}
-	}
+	}(sendLogToSplunkChan)
 
 	appendLogToFileError := AppendLogToFile(
 		fmt.Sprintf(
@@ -115,6 +110,11 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 			fmt.Sprintf("An error has been occurred when appending log to file: %s", appendLogToFileError.Error()),
 		))
 	}
+
+	// select {
+	// case <-sendLogToSplunkChan:
+	// 	fmt.Println("Log sent to Splunk successfully.")
+	// }
 }
 
 // GetSplunkInformationFromEnvironment
@@ -208,4 +208,14 @@ func EnsureTrailingSlash(s string) string {
 		s += "/"
 	}
 	return s
+}
+
+// CustomWriter is a custom log writer that uses a custom logging function
+type CustomWriter struct {
+}
+
+// Implement the Write method of io.Writer for CustomWriter
+func (cw CustomWriter) Write(p []byte) (n int, err error) {
+	WithLevel(constant.Debug, context.Background(), string(p))
+	return len(p), nil
 }
