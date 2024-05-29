@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -43,7 +44,6 @@ func ErrorHandler(c *gin.Context) {
 
 func RequestLogger(c *gin.Context) {
 	CheckAndSetTraceId(c)
-	// t := time.Now()
 	var buf bytes.Buffer
 	tee := io.TeeReader(c.Request.Body, &buf)
 	body, _ := io.ReadAll(tee)
@@ -60,9 +60,9 @@ func RequestLogger(c *gin.Context) {
 
 	for k, v := range header {
 		if IsSensitiveField(k) {
-			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, "***")
+			headerString += fmt.Sprintf("\n\t\t+ %s: %s", k, "***")
 		} else {
-			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, strings.Join(v, ", "))
+			headerString += fmt.Sprintf("\n\t\t+ %s: %s", k, strings.Join(v, ", "))
 		}
 	}
 	token := c.Request.Header.Get("Authorization")
@@ -114,6 +114,7 @@ func RequestLogger(c *gin.Context) {
 }
 
 func ResponseLogger(c *gin.Context) {
+	startingTime := time.Now()
 	CheckAndSetTraceId(c)
 	// c.Writer.Header().Set("X-Content-Type-Options", "nosniff")
 	// c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
@@ -125,15 +126,17 @@ func ResponseLogger(c *gin.Context) {
 
 	c.Next()
 
+	latency := time.Since(startingTime)
+
 	header := map[string][]string(c.Writer.Header())
 
 	headerString := ""
 
 	for k, v := range header {
 		if IsSensitiveField(k) {
-			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, "***")
+			headerString += fmt.Sprintf("\n\t\t+ %s: %s", k, "***")
 		} else {
-			headerString += fmt.Sprintf("\n\t\t- %s: %s", k, strings.Join(v, ", "))
+			headerString += fmt.Sprintf("\n\t\t+ %s: %s", k, strings.Join(v, ", "))
 		}
 	}
 	// (*blw).body = bytes.NewBufferString("") <=> blw.body = bytes.NewBufferString("")
@@ -150,21 +153,23 @@ func ResponseLogger(c *gin.Context) {
 	}
 	if responseSizeKB > float64(10) {
 		message = fmt.Sprintf(
-			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB",
+			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB\n\t- latency: %s",
 			strconv.Itoa(statusCode),
 			c.Request.Method,
 			requestUri,
 			headerString,
 			responseSizeMB,
+			latency,
 		)
 	} else {
 		message = fmt.Sprintf(
-			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB\n\t- payload:\n\t%s",
+			"Response info:\n\t- status code: %s\n\t- method: %s\n\t- url: %s\n\t- header:%s\n\t- response size: %.6f MB\n\t- latency: %s\n\t- payload:\n\t%s",
 			strconv.Itoa(statusCode),
 			c.Request.Method,
 			requestUri,
 			headerString,
 			responseSizeMB,
+			latency,
 			blw.body.String(),
 		)
 	}
@@ -224,10 +229,16 @@ func AuthenticationWithAuthorization(listOfRole []string) func(c *gin.Context) {
 		currentUsername := mapClaims.PreferredUsername
 		ctx = context.WithValue(ctx, constant.UsernameLogKey, currentUsername)
 		c.Set("auth", mapClaims)
+		var requestUri string
+		if token != "" {
+			requestUri = strings.Replace(c.Request.RequestURI, token, "***", -1)
+		} else {
+			requestUri = c.Request.RequestURI
+		}
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			fmt.Sprintf("Check permission for url: %v", c.Request.RequestURI),
+			fmt.Sprintf("Check permission for url: %v", requestUri),
 		)
 		if listOfRole == nil || len(listOfRole) < 1 {
 			c.Next()

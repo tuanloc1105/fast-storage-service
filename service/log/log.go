@@ -111,10 +111,10 @@ func WithLevel(level constant.LogLevelType, ctx context.Context, content string,
 		))
 	}
 
-	select {
-	case <-sendLogToSplunkChan:
-		fmt.Println("Log sent to Splunk successfully.")
-	}
+	// select {
+	// case <-sendLogToSplunkChan:
+	// 	fmt.Println("Log sent to Splunk successfully.")
+	// }
 }
 
 // GetSplunkInformationFromEnvironment
@@ -208,4 +208,14 @@ func EnsureTrailingSlash(s string) string {
 		s += "/"
 	}
 	return s
+}
+
+// CustomWriter is a custom log writer that uses a custom logging function
+type CustomWriter struct {
+}
+
+// Implement the Write method of io.Writer for CustomWriter
+func (cw CustomWriter) Write(p []byte) (n int, err error) {
+	WithLevel(constant.Debug, context.Background(), string(p))
+	return len(p), nil
 }

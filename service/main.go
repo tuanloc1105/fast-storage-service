@@ -25,7 +25,8 @@ func main() {
 		ctx,
 		">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Application starting <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
 	)
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
 
 	router.NoRoute(
 		func(context *gin.Context) {
