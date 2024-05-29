@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"gorm.io/gorm"
 )
@@ -214,4 +215,14 @@ func convertBytesToMB(bytes int64) float64 {
 
 func convertBytesToKB(bytes int64) float64 {
 	return float64(bytes) / float64(BytesPerKB)
+}
+
+func removeNonAlpha(s string) string {
+	result := []rune{}
+	for _, char := range s {
+		if unicode.IsLetter(char) || unicode.IsSpace(char) || unicode.IsNumber(char) {
+			result = append(result, char)
+		}
+	}
+	return string(result)
 }
