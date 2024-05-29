@@ -5,4 +5,4 @@ services:
     environment:
       - BACKEND_URL=https://polliwog-one-rarely.ngrok-free.app/fast_storage/api/v1
     ports:
-      - "80:80"
+      - "100:80"
