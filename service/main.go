@@ -10,6 +10,9 @@ import (
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -83,15 +86,24 @@ func main() {
 		"Current directory is: "+utils.GetCurrentDirectory(),
 	)
 
+	go func() {
+		gitStartUpError := router.Run(":" + applicationPort)
+		if gitStartUpError != nil {
+			log.WithLevel(constant.Error, ctx, "Error when running server: %v", gitStartUpError)
+			os.Exit(1)
+		}
+	}()
+
 	log.WithLevel(
 		constant.Info,
 		ctx,
-		"Application starting with port: "+applicationPort,
+		"Application started on port: "+applicationPort,
 	)
 
-	gitStartUpError := router.Run(":" + applicationPort)
-	if gitStartUpError != nil {
-		panic(gitStartUpError)
-	}
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.WithLevel(constant.Info, ctx, "Shutting down the server")
 
 }
