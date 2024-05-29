@@ -123,6 +123,6 @@ print_message_and_run_input_command "Remove node modules" "rm -rf ./node_modules
 print_message_and_run_input_command "Remove built app" "rm -rf ./app-run"
 print_message_and_run_input_command "Remove nx cache" "rm -rf ./.nx"
 print_message_and_run_input_command "Remove angular cache" "rm -rf ./.angular"
-cd ..
 
 print_message_and_run_input_command "Restore file changed" "git reset . ; git restore ."
+cd ..
