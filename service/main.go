@@ -25,7 +25,13 @@ func main() {
 		ctx,
 		">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Application starting <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
 	)
+	gin.SetMode(gin.DebugMode)
 	router := gin.New()
+	err := router.SetTrustedProxies([]string{"192.168.1.0/24", "127.0.0.1"})
+	if err != nil {
+		log.WithLevel(constant.Error, ctx, "Could not set trusted proxies: %s\n", err.Error())
+	}
+
 	router.Use(gin.Recovery())
 
 	router.NoRoute(

@@ -72,21 +72,31 @@ func RequestLogger(c *gin.Context) {
 	} else {
 		requestUri = c.Request.RequestURI
 	}
+
+	xForwardedFor := c.Request.Header.Get("X-Forwarded-For")
+	xRealIP := c.Request.Header.Get("X-Real-IP")
+
 	var message string
 	if isPossibleToLogRequestPayload {
 		message = fmt.Sprintf(
-			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
+			"Request info:\n\t- header:%s\n\t- url: %s\n\t- X-Forwarded-For: %s\n\t- X-Real-IP: %s\n\t- ClientIP: %s\n\t- method: %s\n\t- proto: %s\n\t- payload:\n\t%s",
 			headerString,
 			requestUri,
+			xForwardedFor,
+			xRealIP,
+			c.ClientIP(),
 			c.Request.Method,
 			c.Request.Proto,
 			dst.String(),
 		)
 	} else {
 		message = fmt.Sprintf(
-			"Request info:\n\t- header:%s\n\t- url: %s\n\t- method: %s\n\t- proto: %s",
+			"Request info:\n\t- header:%s\n\t- url: %s\n\t- X-Forwarded-For: %s\n\t- X-Real-IP: %s\n\t- ClientIP: %s\n\t- method: %s\n\t- proto: %s",
 			headerString,
 			requestUri,
+			xForwardedFor,
+			xRealIP,
+			c.ClientIP(),
 			c.Request.Method,
 			c.Request.Proto,
 		)
@@ -284,28 +294,28 @@ func ReturnResponse(c *gin.Context, errCode constant.ErrorEnums, responseData an
 	}
 }
 
-func ReturnPageResponse(
-	c *gin.Context,
-	errCode constant.ErrorEnums,
-	totalElement int64,
-	totalPage int64,
-	responseData any,
-	additionalMessage ...string,
-) *payload.PageResponse {
-	message := ""
-	if len(additionalMessage) > 0 {
-		message = additionalMessage[0]
-	}
+// func ReturnPageResponse(
+// 	c *gin.Context,
+// 	errCode constant.ErrorEnums,
+// 	totalElement int64,
+// 	totalPage int64,
+// 	responseData any,
+// 	additionalMessage ...string,
+// ) *payload.PageResponse {
+// 	message := ""
+// 	if len(additionalMessage) > 0 {
+// 		message = additionalMessage[0]
+// 	}
 
-	return &payload.PageResponse{
-		Trace:        GetTraceId(c),
-		ErrorCode:    errCode.ErrorCode,
-		ErrorMessage: strings.Replace(strings.Trim(strings.Trim(errCode.ErrorMessage, " ")+". "+strings.Trim(message, " ")+".", " "), ". .", ".", -1),
-		TotalElement: totalElement,
-		TotalPage:    totalPage,
-		Response:     responseData,
-	}
-}
+// 	return &payload.PageResponse{
+// 		Trace:        GetTraceId(c),
+// 		ErrorCode:    errCode.ErrorCode,
+// 		ErrorMessage: strings.Replace(strings.Trim(strings.Trim(errCode.ErrorMessage, " ")+". "+strings.Trim(message, " ")+".", " "), ". .", ".", -1),
+// 		TotalElement: totalElement,
+// 		TotalPage:    totalPage,
+// 		Response:     responseData,
+// 	}
+// }
 
 func ReadGinContextToPayload[T any](c *gin.Context, requestPayload *T) bool {
 	if err := c.ShouldBindJSON(requestPayload); err != nil {
