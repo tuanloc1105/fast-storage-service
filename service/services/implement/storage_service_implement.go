@@ -246,6 +246,8 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				fileExtension := ""
 				fileLastModifiedDate := ""
 				fileType := "file"
+				fileEditable := false
+				fileBirthDate := ""
 
 				match := FileAndFolderNameRegex.FindStringSubmatch(line)
 				if len(match) > 1 {
@@ -254,6 +256,16 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				if fileName == "" {
 					continue
 				}
+
+				// check if file is editable
+				fileCommand := "file '" + fileName + "' "
+				fileCommandStdout, _, fileCommandError := utils.ShelloutAtSpecificDirectory(h.Ctx, fileCommand, folderToView)
+				if fileCommandError == nil {
+					if strings.Contains(fileCommandStdout, "text") {
+						fileEditable = true
+					}
+				}
+
 				statCommandForNameOrFolder := fmt.Sprintf("stat '%s'", fileName)
 				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, false, false); infomationOfNameOrFolderErrors != nil {
 					log.WithLevel(constant.Warn, h.Ctx, "cannot execute stats: %s", infomationOfNameOrFolderErrors.Error())
@@ -298,7 +310,16 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 							} else {
 								fileLastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
 							}
-
+						}
+						// birth date handler
+						if informationLineIndex == 7 {
+							birthDateString := strings.TrimSpace(strings.Replace(informationLine, "Birth: ", "", -1))
+							fmt.Println("birthDateString is:", birthDateString)
+							if birthDate, birthDateParseError := time.Parse(constant.FileStatDateTimeLayout, birthDateString); birthDateParseError != nil {
+								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", birthDateParseError.Error())
+							} else {
+								fileBirthDate = birthDate.Format(constant.YyyyMmDdHhMmSsFormat)
+							}
 						}
 					}
 				}
@@ -320,6 +341,8 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 					Extension:        fileExtension,
 					LastModifiedDate: fileLastModifiedDate,
 					Type:             fileType,
+					Editable:         fileEditable,
+					BirthDate:        fileBirthDate,
 				}
 				listOfFileInformation = append(listOfFileInformation, fileInfo)
 			}
@@ -1461,7 +1484,7 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 		return
 	}
 
-	checkIfFileIsTextFileCommand := "file " + fileNameToReadFromRequest
+	checkIfFileIsTextFileCommand := "file '" + fileNameToReadFromRequest + "'"
 	checkIfFileIsTextStdout, _, checkIfFileIsTextError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkIfFileIsTextFileCommand, folderToView)
 	if checkIfFileIsTextError != nil {
 		c.AbortWithStatusJSON(
