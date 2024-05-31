@@ -274,7 +274,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				} else {
 					listOfLineOfInformation := strings.Split(infomationOfNameOrFolderStdout, "\n")
 					for informationLineIndex, informationLine := range listOfLineOfInformation {
-						fmt.Println("line ", informationLineIndex, ": ", informationLine)
+						// fmt.Println("line ", informationLineIndex, ": ", informationLine)
 						// file/folder fileSize handler
 						if informationLineIndex == 1 {
 							if fileSizeMatch := SizeOfFileInStatCommandResultRegex.FindStringSubmatch(informationLine); fileSizeMatch != nil {
@@ -292,7 +292,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 									} else {
 										fileSize = fmt.Sprintf("%d %s", fileSizeInt64, "byte(s)")
 									}
-									fmt.Println("fileSize is:", fileSize)
+									// fmt.Println("fileSize is:", fileSize)
 								}
 							}
 						}
@@ -305,7 +305,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 						// last modified date handler
 						if informationLineIndex == 5 {
 							modifiedDateString := strings.TrimSpace(strings.Replace(informationLine, "Modify: ", "", -1))
-							fmt.Println("modifiedDateString is:", modifiedDateString)
+							// fmt.Println("modifiedDateString is:", modifiedDateString)
 							if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
 								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
 							} else {
@@ -315,7 +315,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 						// birth date handler
 						if informationLineIndex == 7 {
 							birthDateString := strings.TrimSpace(strings.Replace(informationLine, "Birth: ", "", -1))
-							fmt.Println("birthDateString is:", birthDateString)
+							// fmt.Println("birthDateString is:", birthDateString)
 							if birthDate, birthDateParseError := time.Parse(constant.FileStatDateTimeLayout, birthDateString); birthDateParseError != nil {
 								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", birthDateParseError.Error())
 							} else {
@@ -333,7 +333,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while geting file extension: \n- %s\n- %s", fileExtensionErrOut, fileExtensionError.Error())
 					}
 					fileExtension = strings.ToUpper(fileExtensionStdOut)
-					fmt.Println("fileExtension is:", fileExtension)
+					// fmt.Println("fileExtension is:", fileExtension)
 				}
 
 				fileInfo := payload.FileInformation{
