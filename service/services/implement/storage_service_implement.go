@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -916,7 +917,7 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 
 	fileNameToDownload := fileNameToDownloadFromRequest
-	finalFileName := fileNameToDownload
+	// finalFileName := fileNameToDownload
 	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
 	if openFileError != nil {
 		c.AbortWithStatusJSON(
@@ -952,10 +953,10 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 
 	c.Status(200)
-	c.Header("File-Name", finalFileName)
+	// c.Header("File-Name", finalFileName)
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Type", constant.ContentTypeBinary)
-	c.Header("Content-Disposition", "attachment; filename="+fileNameToDownload)
+	c.Header("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(fileNameToDownload))
 	c.Header("Content-Transfer-Encoding", "binary")
 	c.Header("Expires", "0")
 	c.Header("Cache-Control", "must-revalidate")
