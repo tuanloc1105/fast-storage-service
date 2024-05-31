@@ -7,13 +7,16 @@ import {
   inject,
 } from '@angular/core';
 import {
+  LockFolderComponent,
   NewFolderComponent,
   UploadFileComponent,
 } from '@app/shared/components';
 import { Directory } from '@app/shared/model';
 import { ImageSrcPipe } from '@app/shared/pipe';
+import { LocalStorageJwtService } from '@app/shared/services';
 import { AppStore, StorageStore } from '@app/store';
 import { patchState } from '@ngrx/signals';
+import { environment } from 'environments/environment';
 import {
   ConfirmationService,
   MenuItem,
@@ -26,8 +29,6 @@ import { ContextMenuModule } from 'primeng/contextmenu';
 import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
-import { environment } from 'environments/environment';
-import { LocalStorageJwtService } from '@app/shared/services';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
@@ -97,6 +98,10 @@ export class FolderDetailComponent implements OnInit {
         icon: 'pi pi-upload',
         command: () => this.uploadFile(),
       },
+      {
+        icon: 'pi pi-lock',
+        command: () => this.lockFolder(),
+      },
     ];
 
     this.tableContextMenu = [
@@ -150,6 +155,12 @@ export class FolderDetailComponent implements OnInit {
     }
   }
 
+  private lockFolder(): void {
+    this.dialogService.open(LockFolderComponent, {
+      header: 'Lock folder',
+    });
+  }
+
   private addNewFolder(): void {
     this.dialogService.open(NewFolderComponent, {
       header: 'Create new folder',
@@ -179,11 +190,9 @@ export class FolderDetailComponent implements OnInit {
     if (!accessToken || !this.selectedDirectory) return;
 
     if (this.selectedDirectory.type === 'folder') {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Error',
-        detail: 'Download folder is not supported.',
-      });
+      window.location.href = `${
+        environment.apiUrl
+      }/storage/download_folder?locationToDownload=${this.storageStore.currentPath()}&token=${accessToken}`;
       return;
     }
 

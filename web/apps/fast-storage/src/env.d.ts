@@ -5,5 +5,5 @@ interface ImportMeta {
 interface ImportMetaEnv {
   readonly NODE_ENV: string;
   readonly NG_APP_NAME: string;
-  readonly BACKEND_URL: string;
+  readonly NG_APP_BACKEND_URL: string;
 }

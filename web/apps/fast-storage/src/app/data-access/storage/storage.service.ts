@@ -1,10 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
+  CheckFolderProtectionRequest,
   CreateFolderRequest,
   Directory,
   DirectoryRequest,
   DownloadFileRequest,
+  FolderProtectionRequest,
   RemoveFileRequest,
   StorageStatus,
   UploadFileRequest,
@@ -78,5 +80,23 @@ export class StorageService {
     payload: RemoveFileRequest
   ): Observable<CommonResponse<any>> {
     return this.http.post<CommonResponse<any>>('/storage/remove_file', payload);
+  }
+
+  public setFolderProtection(
+    payload: FolderProtectionRequest
+  ): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>(
+      '/storage/set_password_for_folder',
+      payload
+    );
+  }
+
+  public checkFolderProtection(
+    payload: CheckFolderProtectionRequest
+  ): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>(
+      '/storage/check_secure_folder_status',
+      payload
+    );
   }
 }

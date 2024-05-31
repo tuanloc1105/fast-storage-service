@@ -42,3 +42,17 @@ export interface RemoveFileRequest {
     otpCredential?: string;
   };
 }
+
+export interface FolderProtectionRequest {
+  request: {
+    folder: string;
+    credentialType: 'password' | 'OTP';
+    credential: string;
+  };
+}
+
+export interface CheckFolderProtectionRequest {
+  request: {
+    folder: string;
+  };
+}
