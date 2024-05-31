@@ -1192,7 +1192,7 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 
 	fileNameToDownload := requestPayload.Request.FileNameToRemove
 
-	removeFileCommand := fmt.Sprintf("rm -rf %s", folderToView+fileNameToDownload)
+	removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToDownload)
 
 	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
 		c.AbortWithStatusJSON(
