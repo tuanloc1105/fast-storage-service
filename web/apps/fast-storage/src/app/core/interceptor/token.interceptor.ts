@@ -5,7 +5,7 @@ import { environment } from 'environments/environment';
 
 export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
   const is_production = environment.production;
-  const BACKEND_URL = import.meta.env.BACKEND_URL;
+  const BACKEND_URL = environment.apiUrl;
 
   let token: string | null = null;
   inject(LocalStorageJwtService)

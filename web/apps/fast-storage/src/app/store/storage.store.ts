@@ -5,8 +5,10 @@ import {
   DEFAULT_STATUS_STORAGE_COLOR,
 } from '@app/shared/constant';
 import {
+  CheckFolderProtectionRequest,
   Directory,
   DownloadFileRequest,
+  FolderProtectionRequest,
   RemoveFileRequest,
   StorageStatus,
   UploadFileRequest,
@@ -236,6 +238,50 @@ export const StorageStore = signalStore(
                     severity: 'success',
                     summary: 'Success',
                     detail: 'File removed successfully',
+                  });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      folderProtection: rxMethod<FolderProtectionRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return storageService.setFolderProtection(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Folder protected successfully',
+                  });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      checkFolderProtection: rxMethod<CheckFolderProtectionRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return storageService.checkFolderProtection(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Folder protected successfully',
                   });
                 },
                 error: (err) => {
