@@ -3,7 +3,7 @@ WORKDIR /app
 COPY . .
 RUN pnpm setup
 RUN pnpm install
-RUN nx build fast-storage
+RUN npm run build:angular && exit 0
 
 FROM nginx:1.26.0
 RUN mkdir -p /app-run

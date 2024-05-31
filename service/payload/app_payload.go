@@ -174,4 +174,6 @@ type FileInformation struct {
 	Extension        string `json:"extension"`
 	LastModifiedDate string `json:"lastModifiedDate"`
 	Type             string `json:"type"`
+	Editable         bool   `json:"editable"`
+	BirthDate        string `json:"birthDate"`
 }

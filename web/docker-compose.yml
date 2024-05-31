@@ -2,5 +2,7 @@ services:
   web:
     container_name: fast-storage-web
     image: fast-storage-service:latest
+    environment:
+      - BACKEND_URL=https://polliwog-one-rarely.ngrok-free.app/fast_storage/api/v1
     ports:
-      - "80:80"
+      - "100:80"
