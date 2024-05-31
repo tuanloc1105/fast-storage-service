@@ -97,7 +97,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Release.Name }}-cf
-                  key: splunk_hostt
+                  key: splunk_host
             - name: SPLUNK_SOURCE
               valueFrom:
                 configMapKeyRef:
