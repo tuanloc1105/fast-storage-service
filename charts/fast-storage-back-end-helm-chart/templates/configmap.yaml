@@ -16,3 +16,7 @@ data:
   outlook_username: {{ .Values.outlook_username | quote }}
   smtp_host: {{ .Values.smtp_host | quote }}
   smtp_port: {{ .Values.smtp_port | quote }}
+  splunk_host: {{ .Values.splunk_host | quote }}
+  splunk_source: {{ .Values.splunk_source | quote }}
+  splunk_sourcetype: {{ .Values.splunk_sourcetype | quote }}
+  splunk_index: {{ .Values.splunk_index | quote }}

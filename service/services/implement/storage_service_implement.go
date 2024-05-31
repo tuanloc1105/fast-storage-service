@@ -268,7 +268,7 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				}
 
 				statCommandForNameOrFolder := fmt.Sprintf("stat '%s'", fileName)
-				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, false, false); infomationOfNameOrFolderErrors != nil {
+				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, true, true); infomationOfNameOrFolderErrors != nil {
 					log.WithLevel(constant.Warn, h.Ctx, "cannot execute stats: %s", infomationOfNameOrFolderErrors.Error())
 					continue
 				} else {
@@ -1285,7 +1285,7 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 		return
 	}
 
-	if strings.Contains(requestPayload.Request.Folder, "/") || strings.Contains(requestPayload.Request.Folder, "\\") {
+	if strings.Contains(requestPayload.Request.Folder, "\\") {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(

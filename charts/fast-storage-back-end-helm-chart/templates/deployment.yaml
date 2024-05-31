@@ -93,6 +93,26 @@ spec:
                 configMapKeyRef:
                   name: {{ .Release.Name }}-cf
                   key: smtp_port
+            - name: SPLUNK_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: splunk_hostt
+            - name: SPLUNK_SOURCE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: splunk_source
+            - name: SPLUNK_SOURCETYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: splunk_sourcetype
+            - name: SPLUNK_INDEX
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Release.Name }}-cf
+                  key: splunk_index
 
             - name: DATABASE_USERNAME
               valueFrom:
@@ -129,3 +149,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Release.Name }}-secret
                   key: outlook_password
+            - name: SPLUNK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-secret
+                  key: splunk_token
