@@ -78,11 +78,12 @@ ssh_host="$3"
 ssh_port="$4"
 target_dir="$5"
 current_time=$(date -d "$b 0 min" "+%Y%m%d%H%M%S")
-# images_tag="${current_time}_${lastest_git_commit_hash_id}"
-images_tag="latest"
+images_tag="${current_time}_${lastest_git_commit_hash_id}"
 
-# print_message "Deloying new version of service with images tag: ${images_tag}"
+final_image_name="$images_name:$images_tag"
+
 clear
+print_message "Deloying new version of service with images tag: ${images_tag}"
 cd ./web
 
 print_message_and_run_input_command "Remove node modules" "rm -rf ./node_modules"
@@ -95,13 +96,14 @@ print_message_and_run_input_command "Build web" "npm run build:angular"
 
 print_message_and_run_input_command "Rename built folder" "mv ./dist/ ./app-run/"
 
+print_message_and_run_input_command "Change docker compose image name" "sed -i \"s|the_name_of_image|$final_image_name|\" docker-compose.yml"
+
 print_message "Uploading necessary file to target host $ssh_host"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "mkdir -p ${target_dir}"
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./app-run/ $ssh_user@$ssh_host:$target_dir
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./nginx.conf $ssh_user@$ssh_host:$target_dir
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./docker-compose.yml $ssh_user@$ssh_host:$target_dir
 scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./Dockerfile.copy_from_locally_built_app $ssh_user@$ssh_host:$target_dir
-
 
 down="docker compose down"
 print_message_and_command_with_out_execute "Down running docker service" "$down"
@@ -111,7 +113,7 @@ rmi="docker rmi fast-storage-service:latest"
 print_message_and_command_with_out_execute "Remove built image" "$rmi"
 try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; echo ${rmi} > rmi.txt ; eval ${rmi}\""
 
-build="docker buildx build -f ./Dockerfile.copy_from_locally_built_app -t fast-storage-service:latest ."
+build="docker buildx build -f ./Dockerfile.copy_from_locally_built_app -t $final_image_name ."
 print_message_and_command_with_out_execute "Build image" "$build"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; echo ${build} > build.txt ; eval ${build}"
 
