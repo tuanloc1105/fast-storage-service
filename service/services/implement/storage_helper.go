@@ -129,6 +129,8 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 	secureFolderData := []model.UserFolderCredential{}
 	folderSecureDataMatchWithInputFolder := model.UserFolderCredential{}
 
+	log.WithLevel(constant.Info, ctx, "check if current folder is secured")
+
 	db.WithContext(ctx).Where(
 		model.UserFolderCredential{
 			Username: ctx.Value(constant.UsernameLogKey).(string),
@@ -148,9 +150,18 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 	if !isInputFolderSecured {
 		return nil
 	}
-
+	log.WithLevel(constant.Info, ctx, "this folder is secured")
 	// check folder activity
-	if currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime) < time.Duration(5)*time.Minute {
+	folderActivityDuration := currentTime.Sub(folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime)
+	log.WithLevel(
+		constant.Info,
+		ctx,
+		"checking folder activition:\n\t- last time: %s\n\t- current time: %s\n\t- current time - last time: %s",
+		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime,
+		currentTime,
+		folderActivityDuration,
+	)
+	if folderActivityDuration < time.Duration(5)*time.Minute {
 		folderSecureDataMatchWithInputFolder.LastFolderActivitiesTime = currentTime
 		db.WithContext(ctx).Save(&folderSecureDataMatchWithInputFolder)
 		return nil
@@ -159,10 +170,12 @@ func handleCheckUserFolderSecurityActivities(ctx context.Context, db *gorm.DB, f
 	// check folder credential
 	var checkCredentialError error = nil
 	if folderSecureDataMatchWithInputFolder.CredentialType == "OTP" {
+		log.WithLevel(constant.Info, ctx, "this folder is secured with OTP")
 		if _, handleOtpError := handleCheckUserOtp(ctx, db, credential); handleOtpError != nil {
 			checkCredentialError = handleOtpError
 		}
 	} else {
+		log.WithLevel(constant.Info, ctx, "this folder is secured with PASSWORD")
 		if comparePasswordError := utils.ComparePassword(credential, folderSecureDataMatchWithInputFolder.Credential); comparePasswordError != nil {
 			checkCredentialError = comparePasswordError
 		}

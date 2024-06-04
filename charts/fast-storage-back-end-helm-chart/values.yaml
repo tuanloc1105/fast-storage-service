@@ -22,3 +22,8 @@ smtp_host: smtp.office365.com
 smtp_port: 587
 outlook_username: username
 outlook_password: cGFzc3dvcmQK
+splunk_host: http://192.168.1.22:8088/services/collector/event
+splunk_token: MmVlZTVjNGUtNTRkYy00OTk1LWIyOGUtMWVkYmU1ODNmMTli
+splunk_source: localhost
+splunk_sourcetype: fs-service
+splunk_index: fs-storage

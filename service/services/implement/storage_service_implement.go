@@ -268,60 +268,46 @@ func (h StorageHandler) GetAllElementInSpecificDirectory(c *gin.Context) {
 				}
 
 				statCommandForNameOrFolder := fmt.Sprintf("stat '%s'", fileName)
-				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, false, false); infomationOfNameOrFolderErrors != nil {
+				if infomationOfNameOrFolderStdout, _, infomationOfNameOrFolderErrors := utils.ShelloutAtSpecificDirectory(h.Ctx, statCommandForNameOrFolder, folderToView, true, true); infomationOfNameOrFolderErrors != nil {
 					log.WithLevel(constant.Warn, h.Ctx, "cannot execute stats: %s", infomationOfNameOrFolderErrors.Error())
 					continue
 				} else {
 					listOfLineOfInformation := strings.Split(infomationOfNameOrFolderStdout, "\n")
-					for informationLineIndex, informationLine := range listOfLineOfInformation {
-						// fmt.Println("line ", informationLineIndex, ": ", informationLine)
-						// file/folder fileSize handler
-						if informationLineIndex == 1 {
-							if fileSizeMatch := SizeOfFileInStatCommandResultRegex.FindStringSubmatch(informationLine); fileSizeMatch != nil {
-								if len(fileSizeMatch) > 1 {
-									fileSizeInt64, fileSizeInt64ConvertError := strconv.ParseInt(fileSizeMatch[1], 10, 64)
-									if fileSizeInt64ConvertError != nil {
-										log.WithLevel(constant.Warn, h.Ctx, "cannot convert file size from string to int64 of file %s: %s", fileName, fileSizeInt64ConvertError.Error())
-									}
-									if BytesPerKB <= fileSizeInt64 && fileSizeInt64 < BytesPerMB {
-										fileSize = fmt.Sprintf("%.4f %s", convertBytesToKB(fileSizeInt64), "KB")
-									} else if BytesPerMB <= fileSizeInt64 && fileSizeInt64 < BytesPerGB {
-										fileSize = fmt.Sprintf("%.4f %s", convertBytesToMB(fileSizeInt64), "MB")
-									} else if BytesPerGB <= fileSizeInt64 {
-										fileSize = fmt.Sprintf("%.4f %s", convertBytesToGB(fileSizeInt64), "GB")
-									} else {
-										fileSize = fmt.Sprintf("%d %s", fileSizeInt64, "byte(s)")
-									}
-									// fmt.Println("fileSize is:", fileSize)
-								}
+					if fileSizeMatch := SizeOfFileInStatCommandResultRegex.FindStringSubmatch(listOfLineOfInformation[1]); fileSizeMatch != nil {
+						if len(fileSizeMatch) > 1 {
+							fileSizeInt64, fileSizeInt64ConvertError := strconv.ParseInt(fileSizeMatch[1], 10, 64)
+							if fileSizeInt64ConvertError != nil {
+								log.WithLevel(constant.Warn, h.Ctx, "cannot convert file size from string to int64 of file %s: %s", fileName, fileSizeInt64ConvertError.Error())
 							}
-						}
-						// file type handler
-						if informationLineIndex == 3 {
-							if strings.Contains(informationLine, "/d") {
-								fileType = "folder"
-							}
-						}
-						// last modified date handler
-						if informationLineIndex == 5 {
-							modifiedDateString := strings.TrimSpace(strings.Replace(informationLine, "Modify: ", "", -1))
-							// fmt.Println("modifiedDateString is:", modifiedDateString)
-							if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
-								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
+							if BytesPerKB <= fileSizeInt64 && fileSizeInt64 < BytesPerMB {
+								fileSize = fmt.Sprintf("%.4f %s", convertBytesToKB(fileSizeInt64), "KB")
+							} else if BytesPerMB <= fileSizeInt64 && fileSizeInt64 < BytesPerGB {
+								fileSize = fmt.Sprintf("%.4f %s", convertBytesToMB(fileSizeInt64), "MB")
+							} else if BytesPerGB <= fileSizeInt64 {
+								fileSize = fmt.Sprintf("%.4f %s", convertBytesToGB(fileSizeInt64), "GB")
 							} else {
-								fileLastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
+								fileSize = fmt.Sprintf("%d %s", fileSizeInt64, "byte(s)")
 							}
+							// fmt.Println("fileSize is:", fileSize)
 						}
-						// birth date handler
-						if informationLineIndex == 7 {
-							birthDateString := strings.TrimSpace(strings.Replace(informationLine, "Birth: ", "", -1))
-							// fmt.Println("birthDateString is:", birthDateString)
-							if birthDate, birthDateParseError := time.Parse(constant.FileStatDateTimeLayout, birthDateString); birthDateParseError != nil {
-								log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", birthDateParseError.Error())
-							} else {
-								fileBirthDate = birthDate.Format(constant.YyyyMmDdHhMmSsFormat)
-							}
-						}
+					}
+					if strings.Contains(listOfLineOfInformation[3], "/d") {
+						fileType = "folder"
+					}
+					modifiedDateString := strings.TrimSpace(strings.Replace(listOfLineOfInformation[5], "Modify: ", "", -1))
+					// fmt.Println("modifiedDateString is:", modifiedDateString)
+					if modifiedDate, modifiedDateParseError := time.Parse(constant.FileStatDateTimeLayout, modifiedDateString); modifiedDateParseError != nil {
+						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", modifiedDateParseError.Error())
+					} else {
+						fileLastModifiedDate = modifiedDate.Format(constant.YyyyMmDdHhMmSsFormat)
+					}
+
+					birthDateString := strings.TrimSpace(strings.Replace(listOfLineOfInformation[7], "Birth: ", "", -1))
+					// fmt.Println("birthDateString is:", birthDateString)
+					if birthDate, birthDateParseError := time.Parse(constant.FileStatDateTimeLayout, birthDateString); birthDateParseError != nil {
+						log.WithLevel(constant.Error, h.Ctx, "an error has been occurred while convert last modified time string: \n- %s", birthDateParseError.Error())
+					} else {
+						fileBirthDate = birthDate.Format(constant.YyyyMmDdHhMmSsFormat)
 					}
 				}
 
@@ -1192,7 +1178,7 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 
 	fileNameToDownload := requestPayload.Request.FileNameToRemove
 
-	removeFileCommand := fmt.Sprintf("rm -rf %s", folderToView+fileNameToDownload)
+	removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToDownload)
 
 	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
 		c.AbortWithStatusJSON(
@@ -1285,7 +1271,7 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 		return
 	}
 
-	if strings.Contains(requestPayload.Request.Folder, "/") || strings.Contains(requestPayload.Request.Folder, "\\") {
+	if strings.Contains(requestPayload.Request.Folder, "\\") {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(

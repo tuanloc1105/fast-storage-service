@@ -156,6 +156,16 @@ func (c *Client) Writer() io.Writer {
 
 // Client.doRequest is used internally to POST the bytes of events to the Splunk server.
 func (c *Client) doRequest(b *bytes.Buffer) error {
+	// fmt.Printf(
+	// 	"splunk info:\n    - URL: %s\n    - Hostname: %s\n    - Token: %s\n    - Source: %s\n    - SourceType: %s\n    - Index: %s",
+	// 	c.URL,
+	// 	c.Hostname,
+	// 	c.Token,
+	// 	c.Source,
+	// 	c.SourceType,
+	// 	c.Index,
+	// )
+
 	// make new request
 	url := c.URL
 	req, newRequestError := http.NewRequest("POST", url, b)
