@@ -1,9 +1,15 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  OnInit,
+  effect,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PasswordModule } from 'primeng/password';
 import { DialogModule } from 'primeng/dialog';
 import { FormsModule } from '@angular/forms';
-import { DynamicDialogRef } from 'primeng/dynamicdialog';
+import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { StorageStore } from '@app/store';
 import { ButtonModule } from 'primeng/button';
 import { FolderProtectionRequest } from '@app/shared/model';
@@ -30,7 +36,7 @@ import { FolderProtectionRequest } from '@app/shared/model';
       />
       <p-button
         label="Save"
-        (click)="createPassword()"
+        (click)="submit()"
         [disabled]="!password"
         [loading]="storageStore.isLoading()"
       />
@@ -38,22 +44,47 @@ import { FolderProtectionRequest } from '@app/shared/model';
   styles: ``,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LockFolderComponent {
+export class LockFolderComponent implements OnInit {
   public storageStore = inject(StorageStore);
 
   private ref = inject(DynamicDialogRef);
+  private config = inject(DynamicDialogConfig);
 
   public password = '';
 
-  public createPassword() {
-    const payload: FolderProtectionRequest = {
-      request: {
-        folder: this.storageStore.currentPath(),
+  constructor() {
+    effect(() => {
+      if (
+        this.storageStore.hasFileProtected() ||
+        !this.storageStore.folderRequirePassword()
+      ) {
+        this.ref.close();
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    console.log(this.config.data.unlockFolder);
+  }
+
+  public submit() {
+    if (this.config.data.unlockFolder) {
+      const currentPath = this.storageStore.currentPath();
+      this.storageStore.getDetailsDirectory({
+        path: currentPath,
+        type: 'detailFolder',
         credential: this.password,
-        credentialType: 'OTP',
-      },
-    };
-    this.storageStore.folderProtection(payload);
+      });
+    } else {
+      const payload: FolderProtectionRequest = {
+        request: {
+          folder: this.storageStore.currentPath(),
+          credential: this.password,
+          credentialType: 'PASSWORD',
+        },
+      };
+      this.storageStore.folderProtection(payload);
+    }
   }
 
   public closeNewFolderDialog() {

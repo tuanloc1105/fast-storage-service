@@ -33,9 +33,11 @@ type StorageState = {
   hasNewFolder: boolean;
   hasNewFile: boolean;
   hasFileRemoved: boolean;
+  hasFileProtected: boolean;
   breadcrumb: MenuItem[];
   detailFolder: Directory[];
   currentPath: string;
+  folderRequirePassword: boolean;
 };
 
 const initialState: StorageState = {
@@ -46,9 +48,11 @@ const initialState: StorageState = {
   hasNewFolder: false,
   hasNewFile: false,
   hasFileRemoved: false,
+  hasFileProtected: false,
   breadcrumb: [],
   detailFolder: [],
   currentPath: '',
+  folderRequirePassword: false,
 };
 
 export const StorageStore = signalStore(
@@ -128,6 +132,7 @@ export const StorageStore = signalStore(
       getDetailsDirectory: rxMethod<{
         path: string;
         type: 'subMenu' | 'detailFolder';
+        credential?: string;
       }>(
         pipe(
           switchMap((payload) => {
@@ -136,21 +141,26 @@ export const StorageStore = signalStore(
               hasNewFolder: false,
               currentPath: payload.path,
             });
-            return storageService.getDirectory(payload.path).pipe(
-              tapResponse({
-                next: (res) => {
-                  if (payload.type === 'subMenu') {
-                    patchState(store, { subMenuDirectory: res.response });
-                  } else {
-                    patchState(store, { detailFolder: res.response });
-                  }
-                },
-                error: (err) => {
-                  console.log(err);
-                },
-                finalize: () => patchState(store, { isLoading: false }),
-              })
-            );
+            return storageService
+              .getDirectory(payload.path, payload.credential)
+              .pipe(
+                tapResponse({
+                  next: (res) => {
+                    patchState(store, { folderRequirePassword: false });
+                    if (payload.type === 'subMenu') {
+                      patchState(store, { subMenuDirectory: res.response });
+                    } else {
+                      patchState(store, { detailFolder: res.response });
+                    }
+                  },
+                  error: (err: any) => {
+                    if (err.error.errorCode === 1018) {
+                      patchState(store, { folderRequirePassword: true });
+                    }
+                  },
+                  finalize: () => patchState(store, { isLoading: false }),
+                })
+              );
           })
         )
       ),
@@ -252,10 +262,11 @@ export const StorageStore = signalStore(
       folderProtection: rxMethod<FolderProtectionRequest>(
         pipe(
           switchMap((payload) => {
-            patchState(store, { isLoading: true });
+            patchState(store, { isLoading: true, hasFileProtected: false });
             return storageService.setFolderProtection(payload).pipe(
               tapResponse({
                 next: (res) => {
+                  patchState(store, { hasFileProtected: true });
                   messageService.add({
                     severity: 'success',
                     summary: 'Success',

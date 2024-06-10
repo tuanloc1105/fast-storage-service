@@ -27,11 +27,13 @@ export class StorageService {
   }
 
   public getDirectory(
-    location: string
+    location: string,
+    credential?: string
   ): Observable<CommonResponse<Directory[]>> {
     const payload: DirectoryRequest = {
       request: {
         currentLocation: location,
+        credential,
       },
     };
     return this.http.post<CommonResponse<Directory[]>>(
