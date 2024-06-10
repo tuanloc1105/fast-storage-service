@@ -6,31 +6,40 @@
       [home]="home"
       (onItemClick)="handleBreadcrumb($event)"
     />
-    <div
-      class="flex items-center px-3 gap-3 ml-2 rounded-md h-full"
-      [ngClass]="{ 'bg-[#18181b]': appStore.isDarkMode() }"
-    >
-      <p-button
-        label="Download"
-        icon="pi pi-download"
-        [text]="true"
-        size="small"
-      ></p-button>
-      <p-button
-        label="Rename"
-        icon="pi pi-pencil"
-        [text]="true"
-        severity="warning"
-        size="small"
-      ></p-button>
-      <p-button
-        label="Delete"
-        icon="pi pi-trash"
-        [text]="true"
-        severity="danger"
-        size="small"
-      ></p-button>
+    <div class="flex items-center px-3 gap-3 ml-2 rounded-md h-full">
+      <p-iconField iconPosition="left">
+        <p-inputIcon styleClass="pi pi-search" />
+        <input type="text" pInputText placeholder="Search" />
+      </p-iconField>
     </div>
+  </div>
+  <div
+    class="flex items-center px-3 gap-3 rounded-md"
+    [ngClass]="{ 'bg-[#18181b]': appStore.isDarkMode() }"
+  >
+    <p-button
+      label="Download"
+      icon="pi pi-download"
+      [text]="true"
+      size="small"
+      [disabled]="!storageStore.currentPath()"
+    ></p-button>
+    <p-button
+      label="Rename"
+      icon="pi pi-pencil"
+      [text]="true"
+      severity="warning"
+      size="small"
+      [disabled]="!storageStore.currentPath()"
+    ></p-button>
+    <p-button
+      label="Delete"
+      icon="pi pi-trash"
+      [text]="true"
+      severity="danger"
+      size="small"
+      [disabled]="!storageStore.currentPath()"
+    ></p-button>
   </div>
   <div
     class="h-full rounded-md"

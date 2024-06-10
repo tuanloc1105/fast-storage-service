@@ -1,10 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, effect, inject } from '@angular/core';
 import {
   FolderDetailComponent,
   FolderTreeComponent,
   SidebarComponent,
 } from '@app/components';
+import { LockFolderComponent } from '@app/shared/components';
 import { StorageStore } from '@app/store';
+import { DialogService } from 'primeng/dynamicdialog';
 
 @Component({
   selector: 'app-layout',
@@ -25,8 +27,22 @@ import { StorageStore } from '@app/store';
 })
 export class LayoutComponent implements OnInit {
   private readonly storageStore = inject(StorageStore);
+  private readonly dialogService = inject(DialogService);
 
   ngOnInit(): void {
     this.storageStore.getSystemStorageStatus();
+  }
+
+  constructor() {
+    effect(() => {
+      if (this.storageStore.folderRequirePassword()) {
+        this.dialogService.open(LockFolderComponent, {
+          header: 'Folder require password',
+          data: {
+            unlockFolder: true,
+          },
+        });
+      }
+    });
   }
 }

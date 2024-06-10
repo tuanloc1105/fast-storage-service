@@ -14,6 +14,7 @@ export interface Directory {
 export interface DirectoryRequest {
   request: {
     currentLocation: string;
+    credential?: string;
   };
 }
 
@@ -46,7 +47,7 @@ export interface RemoveFileRequest {
 export interface FolderProtectionRequest {
   request: {
     folder: string;
-    credentialType: 'password' | 'OTP';
+    credentialType: 'PASSWORD' | 'OTP';
     credential: string;
   };
 }
