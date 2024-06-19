@@ -1328,17 +1328,53 @@ func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
 		)
 		return
 	} else {
-		baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
-		userPasswordCredential := model.UserFolderCredential{
-			BaseEntity:               baseEntity,
-			Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
-			Directory:                folderToSecure,
-			Credential:               requestPayload.Request.Credential,
-			CredentialType:           requestPayload.Request.CredentialType,
-			LastFolderActivitiesTime: baseEntity.CreatedAt,
-		}
 
-		h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
+		// if password type is `OTP`, then check if user have already configured OTP
+		if requestPayload.Request.CredentialType == "OTP" {
+			if currentUserId, getCurrentUserIdError := utils.GetCurrentUserId(c); getCurrentUserIdError != nil {
+				c.JSON(
+					http.StatusForbidden,
+					utils.ReturnResponse(
+						c,
+						constant.HashPasswordForSecuredFolderError,
+						nil,
+						getCurrentUserIdError.Error(),
+					),
+				)
+				return
+			} else {
+				userOtpDataFoundInTheDb := model.UsersOtpData{}
+				h.DB.WithContext(h.Ctx).Where(
+					model.UsersOtpData{
+						UserId: *currentUserId,
+					},
+				).Find(&userOtpDataFoundInTheDb)
+				if userOtpDataFoundInTheDb.BaseEntity.Id == 0 {
+					c.JSON(
+						http.StatusForbidden,
+						utils.ReturnResponse(
+							c,
+							constant.OtpError,
+							nil,
+							"User did not configure OTP",
+						),
+					)
+					return
+				}
+			}
+		} else {
+			baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+			userPasswordCredential := model.UserFolderCredential{
+				BaseEntity:               baseEntity,
+				Username:                 h.Ctx.Value(constant.UsernameLogKey).(string),
+				Directory:                folderToSecure,
+				Credential:               requestPayload.Request.Credential,
+				CredentialType:           requestPayload.Request.CredentialType,
+				LastFolderActivitiesTime: baseEntity.CreatedAt,
+			}
+
+			h.DB.WithContext(h.Ctx).Save(&userPasswordCredential)
+		}
 
 		c.JSON(
 			http.StatusOK,
