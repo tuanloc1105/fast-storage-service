@@ -27,6 +27,10 @@ func MigrationAndInsertDate(db *gorm.DB) {
 	if userFolderCredentialDataMigrateErr != nil {
 		panic(userFolderCredentialDataMigrateErr)
 	}
+	userFileAndFolderSharingMigrateErr := db.AutoMigrate(&model.UserFileAndFolderSharing{})
+	if userFileAndFolderSharingMigrateErr != nil {
+		panic(userFileAndFolderSharingMigrateErr)
+	}
 }
 
 func InsertData(db *gorm.DB) {

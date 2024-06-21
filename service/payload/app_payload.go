@@ -104,9 +104,10 @@ type CheckSecureFolderStatusBody struct {
 }
 
 type ShareFileBodyValue struct {
-	Folder      string   `json:"folder" binding:"required"`
-	File        string   `json:"file" binding:"required"`
-	UserToShare []string `json:"userToShare" binding:"required"`
+	Folder                             string   `json:"folder" binding:"required"`
+	File                               string   `json:"file" binding:"required"`
+	UserEmailToShare                   []string `json:"userEmailToShare" binding:"required"`
+	TheTimeIntervalInMinutesToBeShared int      `json:"theTimeIntervalInMinutesToBeShared" binding:"required"`
 }
 
 type ShareFileBody struct {

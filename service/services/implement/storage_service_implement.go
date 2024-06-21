@@ -2,7 +2,9 @@ package implement
 
 import (
 	"context"
+	"fast-storage-go-service/config"
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/keycloak"
 	"fast-storage-go-service/log"
 	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
@@ -1702,7 +1704,7 @@ func (h StorageHandler) ShareFile(c *gin.Context) {
 		)
 		return
 	}
-	if requestPayload.Request.UserToShare == nil || len(requestPayload.Request.UserToShare) < 1 {
+	if requestPayload.Request.UserEmailToShare == nil || len(requestPayload.Request.UserEmailToShare) < 1 {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(
@@ -1714,9 +1716,83 @@ func (h StorageHandler) ShareFile(c *gin.Context) {
 		return
 	}
 
+	listOfInvalidUsername := make(map[string]string)
+	listOfUsernameToShare := []string{}
+
+	// Get keycloak admin token
+
+	adminProtocolOpenidConnectToken, protocolOpenidConnectTokenError := keycloak.KeycloakLogin(ctx, config.KeycloakAdminUsername, config.KeycloakAdminPassword)
+
+	if protocolOpenidConnectTokenError != nil {
+		log.WithLevel(constant.Error, h.Ctx, protocolOpenidConnectTokenError.Error())
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"An error has been occurred while check list of user to be shared",
+			),
+		)
+		return
+	}
+
+	if adminProtocolOpenidConnectToken.Error != "" {
+		log.WithLevel(constant.Error, h.Ctx, fmt.Sprint(adminProtocolOpenidConnectToken.Error, "-", adminProtocolOpenidConnectToken.ErrorDescription))
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"An error has been occurred while check list of user to be shared",
+			),
+		)
+		return
+	}
+	if requestPayload.Request.UserEmailToShare[0] != "all" {
+		for _, username := range requestPayload.Request.UserEmailToShare {
+			searchResults, searchError := keycloak.KeycloakSearchUser(h.Ctx, adminProtocolOpenidConnectToken.AccessToken, username)
+			if searchError != nil {
+				listOfInvalidUsername[username] = searchError.Error()
+				continue
+			}
+			if len(searchResults) < 1 {
+				listOfInvalidUsername[username] = "user does not exist"
+				continue
+			}
+			if len(searchResults) > 1 {
+				listOfInvalidUsername[username] = "email is not unique"
+				continue
+			}
+			listOfUsernameToShare = append(listOfUsernameToShare, searchResults[0].Username)
+		}
+	}
+	if len(listOfInvalidUsername) > 0 {
+		detailMessage := ""
+		first := true
+		for key, value := range listOfInvalidUsername {
+			if !first {
+				detailMessage += "<br>"
+			}
+			detailMessage += fmt.Sprintf("%s: %s", key, value)
+			first = false
+		}
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InvalidListOfUserEmailToShareError,
+				nil,
+				detailMessage,
+			),
+		)
+		return
+	}
+
 	// listOfUserCanAccess := fmt.Sprint(
 	// 	",",
-	// 	strings.Join(requestPayload.Request.UserToShare, ","),
+	// 	strings.Join(listOfUsernameToShare, ","),
 	// 	",",
 	// )
 

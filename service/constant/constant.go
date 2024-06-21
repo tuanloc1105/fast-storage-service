@@ -191,4 +191,8 @@ var (
 		ErrorCode:    1024,
 		ErrorMessage: "Empty user to share file or folder",
 	}
+	InvalidListOfUserEmailToShareError = ErrorEnums{
+		ErrorCode:    1025,
+		ErrorMessage: "Invalid list of user email to share",
+	}
 )

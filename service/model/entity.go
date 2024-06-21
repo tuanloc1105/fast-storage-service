@@ -52,12 +52,12 @@ type UserFolderCredential struct {
 }
 
 type UserFileAndFolderSharing struct {
-	BaseEntity               BaseEntity `gorm:"embedded" json:"baseInfo"`
-	Username                 string     `json:"username" gorm:"column:username;not null"`
-	Directory                string     `json:"directory" gorm:"column:directory;not null"`
-	Credential               string     `json:"credential" gorm:"column:credential;not null"`                                // bcrypted password, empty string if credential type is OTP
-	CredentialType           string     `json:"credentialType" gorm:"column:credential_type;not null"`                       // OTP or PASSWORD
-	LastFolderActivitiesTime time.Time  `json:"lastFolderActivitiesTime" gorm:"column:last_folder_activities_time;not null"` // folder idle time is 5 minutes last, if exceed then user have to be enter password again to view folder content
+	BaseEntity        BaseEntity `gorm:"embedded" json:"baseInfo"`
+	Username          string     `json:"username" gorm:"column:username;not null"`
+	ListOfUsersShared string     `json:"listOfUsersShared" gorm:"column:list_of_users_shared"`
+	Directory         string     `json:"directory" gorm:"column:directory;not null"`
+	FileName          string     `json:"fileName" gorm:"column:file_name"`
+	ExpiredTime       string     `json:"expiredTime" gorm:"column:expired_time"`
 }
 
 // type Test struct {
