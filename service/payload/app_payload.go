@@ -103,6 +103,16 @@ type CheckSecureFolderStatusBody struct {
 	Request CheckSecureFolderStatusBodyValue `json:"request" binding:"required"`
 }
 
+type ShareFileBodyValue struct {
+	Folder      string   `json:"folder" binding:"required"`
+	File        string   `json:"file" binding:"required"`
+	UserToShare []string `json:"userToShare" binding:"required"`
+}
+
+type ShareFileBody struct {
+	Request ShareFileBodyValue `json:"request" binding:"required"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`

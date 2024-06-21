@@ -1676,3 +1676,51 @@ EOF`,
 		),
 	)
 }
+
+func (h StorageHandler) ShareFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.ShareFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.Folder, "..") ||
+		strings.Contains(requestPayload.Request.File, "..") ||
+		strings.Contains(requestPayload.Request.File, "/") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+	if requestPayload.Request.UserToShare == nil || len(requestPayload.Request.UserToShare) < 1 {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.EmptyUserToShareFileOrFolderError,
+				nil,
+			),
+		)
+		return
+	}
+
+	// listOfUserCanAccess := fmt.Sprint(
+	// 	",",
+	// 	strings.Join(requestPayload.Request.UserToShare, ","),
+	// 	",",
+	// )
+
+	// systemRootFolder := log.GetSystemRootFolder()
+	// folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
+	// fileLocationToShare := folderToView + requestPayload.Request.File
+}

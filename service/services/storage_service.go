@@ -17,4 +17,5 @@ type StorageService interface {
 	CheckSecureFolderStatus(c *gin.Context)
 	ReadTextFileContent(c *gin.Context)
 	EditTextFileContent(c *gin.Context)
+	ShareFile(c *gin.Context)
 }

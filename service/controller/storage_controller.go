@@ -114,4 +114,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.EditTextFileContent,
 		utils.ErrorHandler)
+
+	storageRouter.POST("/share_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.ShareFile,
+		utils.ErrorHandler)
 }

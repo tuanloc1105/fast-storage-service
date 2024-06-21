@@ -187,4 +187,8 @@ var (
 		ErrorCode:    1023,
 		ErrorMessage: "Cannot zip folder",
 	}
+	EmptyUserToShareFileOrFolderError = ErrorEnums{
+		ErrorCode:    1024,
+		ErrorMessage: "Empty user to share file or folder",
+	}
 )
