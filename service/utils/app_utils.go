@@ -7,9 +7,11 @@ import (
 	"fast-storage-go-service/log"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -173,4 +175,15 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 		)
 	}
 	return stdoutString, stderrString, err
+}
+
+func GenerateRandomString(length int) string {
+	var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	randomString := make([]byte, length)
+	for i := range randomString {
+		randomString[i] = constant.Charset[seededRand.Intn(len(constant.Charset))]
+	}
+
+	return string(randomString)
 }

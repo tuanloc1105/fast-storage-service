@@ -57,7 +57,8 @@ type UserFileAndFolderSharing struct {
 	ListOfUsersShared string     `json:"listOfUsersShared" gorm:"column:list_of_users_shared"`
 	Directory         string     `json:"directory" gorm:"column:directory;not null"`
 	FileName          string     `json:"fileName" gorm:"column:file_name"`
-	ExpiredTime       string     `json:"expiredTime" gorm:"column:expired_time"`
+	ShareToken        string     `json:"shareToken" gorm:"column:share_token;not null"`
+	ExpiredTime       time.Time  `json:"expiredTime" gorm:"column:expired_time"`
 }
 
 // type Test struct {

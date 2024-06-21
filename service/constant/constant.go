@@ -26,6 +26,7 @@ const RarFileTimeLayout = "20060102150405"
 const AscKeyword = "ASC"
 const DescKeyword = "DESC"
 const EmptyString = ""
+const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
 	ContentTypeBinary    = "application/octet-stream"
 	ContentTypeForm      = "application/x-www-form-urlencoded"

@@ -1790,13 +1790,50 @@ func (h StorageHandler) ShareFile(c *gin.Context) {
 		return
 	}
 
-	// listOfUserCanAccess := fmt.Sprint(
-	// 	",",
-	// 	strings.Join(listOfUsernameToShare, ","),
-	// 	",",
-	// )
+	currentUsername, getCurrentUsernameError := utils.GetCurrentUsername(c)
+	if getCurrentUsernameError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			utils.ReturnResponse(
+				c,
+				constant.Unauthorized,
+				nil,
+			),
+		)
+		return
+	}
 
-	// systemRootFolder := log.GetSystemRootFolder()
-	// folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
-	// fileLocationToShare := folderToView + requestPayload.Request.File
+	listOfUserCanAccess := fmt.Sprint(
+		",",
+		strings.Join(listOfUsernameToShare, ","),
+		",",
+	)
+
+	shareToken := utils.GenerateRandomString(10)
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
+	baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+	currentTime := time.Now()
+	currentTime = currentTime.Add(time.Duration(requestPayload.Request.TheTimeIntervalInMinutesToBeShared) * time.Minute)
+	userFileAndFolderSharing := model.UserFileAndFolderSharing{
+		BaseEntity:        baseEntity,
+		Username:          *currentUsername,
+		ListOfUsersShared: listOfUserCanAccess,
+		Directory:         folderToView,
+		FileName:          requestPayload.Request.File,
+		ShareToken:        shareToken,
+		ExpiredTime:       currentTime,
+	}
+	h.DB.WithContext(h.Ctx).Save(&userFileAndFolderSharing)
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+
 }
