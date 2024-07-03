@@ -114,6 +114,16 @@ type ShareFileBody struct {
 	Request ShareFileBodyValue `json:"request" binding:"required"`
 }
 
+type DownloadMultipleFileBodyValue struct {
+	Folder     string `json:"folder" binding:"required"`
+	File       string `json:"file" binding:"required"`
+	Credential string `json:"credential"`
+}
+
+type DownloadMultipleFileBody struct {
+	Request DownloadMultipleFileBodyValue `json:"request" binding:"required"`
+}
+
 type ProtocolOpenidConnectTokenResponse struct {
 	AccessToken      string `json:"accessToken"`
 	ExpiresIn        int64  `json:"expiresIn"`

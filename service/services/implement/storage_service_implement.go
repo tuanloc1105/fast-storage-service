@@ -1044,7 +1044,6 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	default:
 		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
 		zipExtension = ".zip"
-
 	}
 
 	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation, true, false)
@@ -1835,5 +1834,109 @@ func (h StorageHandler) ShareFile(c *gin.Context) {
 			nil,
 		),
 	)
+}
 
+func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	folderLocation := c.Query("locationToDownload")
+	credential := c.Query("credential")
+	// archiveType := c.Query("archiveType")
+	listOfFileToDownload := c.Query("listOfFileToDownload")
+
+	if listOfFileToDownload == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`listOfFileToDownload` cannot be empty",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	if folderLocation == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`folderLocation` can not be empty",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToDownload := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToDownload, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	// check if there is a invalid file in `listOfFileToDownload`
+	var listOfFullPathFileLocationToDownload []string = []string{}
+	listOfFileToDownloadArray := strings.Split(listOfFileToDownload, ",")
+	for _, listOfFileElement := range listOfFileToDownloadArray {
+		currentFileElementTrim := strings.Trim(listOfFileElement, " ")
+		fileFullPath := folderToDownload + currentFileElementTrim
+		checkFileExistenceCommand := fmt.Sprint("ls -l", "'", fileFullPath, "'")
+		_, checkFileExistenceStderr, checkFileExistenceError := utils.Shellout(h.Ctx, checkFileExistenceCommand)
+		if checkFileExistenceError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.FileToDownloadInvalidError,
+					nil,
+					fmt.Sprint(checkFileExistenceError, " - ", checkFileExistenceStderr),
+				),
+			)
+			return
+		}
+		listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, fileFullPath)
+	}
+	log.WithLevel(constant.Debug, h.Ctx, fmt.Sprint("list of file to be downloaded\n", listOfFullPathFileLocationToDownload))
 }

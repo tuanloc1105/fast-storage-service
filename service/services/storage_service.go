@@ -18,4 +18,5 @@ type StorageService interface {
 	ReadTextFileContent(c *gin.Context)
 	EditTextFileContent(c *gin.Context)
 	ShareFile(c *gin.Context)
+	DownloadMultipleFile(c *gin.Context)
 }

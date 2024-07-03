@@ -196,4 +196,12 @@ var (
 		ErrorCode:    1025,
 		ErrorMessage: "Invalid list of user email to share",
 	}
+	FileNotExistError = ErrorEnums{
+		ErrorCode:    1026,
+		ErrorMessage: "File does not exist",
+	}
+	FileToDownloadInvalidError = ErrorEnums{
+		ErrorCode:    1027,
+		ErrorMessage: "File to download invalid",
+	}
 )
