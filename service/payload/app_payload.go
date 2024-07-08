@@ -48,10 +48,10 @@ type GetAllElementInSpecificDirectoryBody struct {
 }
 
 type RemoveFileBodyValue struct {
-	LocationToRemove string `json:"locationToRemove" binding:"required"`
-	FileNameToRemove string `json:"fileNameToRemove"`
-	OtpCredential    string `json:"otpCredential"`
-	Credential       string `json:"credential"`
+	LocationToRemove string   `json:"locationToRemove" binding:"required"`
+	FileNameToRemove []string `json:"fileNameToRemove"`
+	OtpCredential    string   `json:"otpCredential"`
+	Credential       string   `json:"credential"`
 }
 
 type RemoveFileBody struct {

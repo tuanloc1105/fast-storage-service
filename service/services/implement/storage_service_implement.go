@@ -1177,31 +1177,31 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 
 	}
 
-	fileNameToDownload := requestPayload.Request.FileNameToRemove
+	for _, fileNameToBeRemoved := range requestPayload.Request.FileNameToRemove {
+		removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToBeRemoved)
 
-	removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToDownload)
-
-	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.RemoveFileError,
-				nil,
-				removeFileCommandError.Error(),
-			),
-		)
-		return
-	} else {
-		c.JSON(
-			http.StatusOK,
-			utils.ReturnResponse(
-				c,
-				constant.Success,
-				nil,
-			),
-		)
+		if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.RemoveFileError,
+					nil,
+					removeFileCommandError.Error(),
+				),
+			)
+			return
+		}
 	}
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
 }
 
 func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
@@ -1918,11 +1918,11 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 
 	// check if there is a invalid file in `listOfFileToDownload`
 	var listOfFullPathFileLocationToDownload []string = []string{}
-	listOfFileToDownloadArray := strings.Split(listOfFileToDownload, ",")
+	listOfFileToDownloadArray := strings.Split(listOfFileToDownload, "@231a")
 	for _, listOfFileElement := range listOfFileToDownloadArray {
 		currentFileElementTrim := strings.Trim(listOfFileElement, " ")
 		fileFullPath := folderToDownload + currentFileElementTrim
-		checkFileExistenceCommand := fmt.Sprint("ls -l", "'", fileFullPath, "'")
+		checkFileExistenceCommand := fmt.Sprint("ls -l ", "'", fileFullPath, "'")
 		_, checkFileExistenceStderr, checkFileExistenceError := utils.Shellout(h.Ctx, checkFileExistenceCommand)
 		if checkFileExistenceError != nil {
 			c.AbortWithStatusJSON(
@@ -1936,7 +1936,71 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 			)
 			return
 		}
-		listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, fileFullPath)
+		// listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, fileFullPath)
+		listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, currentFileElementTrim)
 	}
 	log.WithLevel(constant.Debug, h.Ctx, fmt.Sprint("list of file to be downloaded\n", listOfFullPathFileLocationToDownload))
+	zipFileName := fmt.Sprint(uuid.New().String(), ".zip")
+	listOfFileCommand := ""
+	for _, currentFilePath := range listOfFullPathFileLocationToDownload {
+		listOfFileCommand += fmt.Sprint("'", currentFilePath, "'", " ")
+	}
+	zipListOfFileCommand := fmt.Sprintf("zip %s %s", zipFileName, strings.TrimSpace(listOfFileCommand))
+	_, zipFileStderr, zipFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipListOfFileCommand, folderToDownload)
+	if zipFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.ZipFolderError,
+				nil,
+				fmt.Sprint(zipFileError, " - ", zipFileStderr),
+			),
+		)
+		return
+	}
+	fileToReturnToClient, openFileError := os.Open(folderToDownload + zipFileName)
+	if openFileError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot open file "+zipFileName+" to download. "+openFileError.Error(),
+			),
+		)
+		return
+	}
+	defer func(file *os.File) {
+		closeFileError := file.Close()
+		if closeFileError != nil {
+			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+	}(fileToReturnToClient)
+
+	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
+	if readFileToReturnToClientError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot convert file "+zipFileName+" to download. "+readFileToReturnToClientError.Error(),
+			),
+		)
+		return
+	}
+	c.Status(200)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Type", constant.ContentTypeBinary)
+	c.Header("Content-Disposition", "attachment; filename="+zipFileName)
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Expires", "0")
+	c.Header("Cache-Control", "must-revalidate")
+	c.Writer.Write(fileData)
+	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
 }

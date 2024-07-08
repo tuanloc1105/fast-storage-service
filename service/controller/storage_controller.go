@@ -121,4 +121,12 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.ShareFile,
 		utils.ErrorHandler)
+
+	storageRouter.GET("/download_multiple_file",
+		utils.GetTokenInParamAndSetToHeader(),
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.DownloadMultipleFile,
+		utils.ErrorHandler)
 }

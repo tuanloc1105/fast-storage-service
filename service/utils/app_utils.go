@@ -110,9 +110,10 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"[%s] == Start to executing command: %s",
+			"[%s] == Start to executing\n-command: %s\n-directory: %s",
 			currentCommandRunningId,
 			HideSensitiveInformationOfCurlCommand(command),
+			directory,
 		)
 	}
 	if directory == "" {
