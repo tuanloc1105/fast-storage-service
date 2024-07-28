@@ -8,15 +8,15 @@
 
 .desktop .div {
   background-color: #ffffff;
-  width: 1440px;
-  height: 1024px;
+  width: 519px;
+  height: 237px;
   position: relative;
 }
 
 .desktop .text-wrapper {
   position: absolute;
-  top: 467px;
-  left: 460px;
+  top: -1px;
+  left: 0;
   font-family: "Inter-Regular", Helvetica;
   font-weight: 400;
   color: #000000;
@@ -29,8 +29,8 @@
   position: absolute;
   width: 121px;
   height: 121px;
-  top: 584px;
-  left: 660px;
+  top: 116px;
+  left: 200px;
   border-radius: 60.5px;
   border: 3px solid;
   border-color: #178f38;
