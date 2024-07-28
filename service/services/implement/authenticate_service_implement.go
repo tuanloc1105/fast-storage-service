@@ -467,13 +467,14 @@ func (h AuthenticateHandler) ActiveAccount(c *gin.Context) {
 		)
 		return
 	}
-	c.Data(
-		http.StatusOK,
-		constant.ContentTypeHTML,
-		[]byte(
-			`
-			<h1>Active successfully</h1>
-		`,
-		),
-	)
+	// c.Data(
+	// 	http.StatusOK,
+	// 	constant.ContentTypeHTML,
+	// 	[]byte(
+	// 		`
+	// 		<h1>Active successfully</h1>
+	// 	`,
+	// 	),
+	// )
+	c.HTML(http.StatusOK, "index.html", nil)
 }
