@@ -1,6 +1,6 @@
 import os
 import sys
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 
 
 def load_key(secret_key_directory: str):
@@ -16,8 +16,31 @@ def is_input_path_a_file(path: str):
         raise Exception("The path is neither a file nor a directory.")
 
 
-def encrypt_file(file_name):
-    key = load_key()
+def is_file_encrypted(file_path, key):
+    fernet = Fernet(key)
+    
+    # Read the encrypted data
+    with open(file_path, 'rb') as file:
+        encrypted_data = file.read()
+    
+    try:
+        # Attempt to decrypt the data
+        decrypted_data = fernet.decrypt(encrypted_data)
+        
+        # Check for the unique header
+        header = b'ENCRYPTED'
+        if decrypted_data.startswith(header):
+            return True
+        else:
+            return False
+    except InvalidToken:
+        return False
+
+
+def encrypt_file(secret_key_directory, file_name):
+    if is_file_encrypted(file_name, secret_key_directory):
+        return
+    key = load_key(secret_key_directory)
     fernet = Fernet(key)
     
     with open(file_name, "rb") as file:

@@ -38,6 +38,8 @@ def is_file_encrypted(file_path, key):
 
 
 def decrypt_file(secret_key_directory, file_name):
+    if is_file_encrypted(file_name, secret_key_directory):
+        return
     key = load_key(secret_key_directory)
     fernet = Fernet(key)
     
@@ -60,8 +62,7 @@ if __name__=="__main__":
     path_of_secret_key = sys.argv[1]
     path_of_file = sys.argv[2]
     if is_input_path_a_file(path_of_file):
-        if is_file_encrypted(path_of_file, path_of_secret_key):
-            decrypt_file(path_of_secret_key, path_of_file)
+        decrypt_file(path_of_secret_key, path_of_file)
     else:
         for root, dirs, files in os.walk(path_of_file):
             # Sort files by name
@@ -70,7 +71,6 @@ if __name__=="__main__":
                 file_path = os.path.join(root, file)
                 try:
                     print(f'Working on file: {file_path}')
-                    if is_file_encrypted(file_path, path_of_secret_key):
-                        decrypt_file(path_of_secret_key, file_path)
+                    decrypt_file(path_of_secret_key, file_path)
                 except (IOError, OSError):
                     pass
