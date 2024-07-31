@@ -38,9 +38,10 @@ def is_file_encrypted(file_path, key):
 
 
 def decrypt_file(secret_key_directory, file_name):
-    if is_file_encrypted(file_name, secret_key_directory):
-        return
     key = load_key(secret_key_directory)
+    if not is_file_encrypted(file_name, key):
+        print("this file was not encrypted")
+        sys.exit(1)
     fernet = Fernet(key)
     
     with open(file_name, "rb") as file:
@@ -54,7 +55,7 @@ def decrypt_file(secret_key_directory, file_name):
         original_data = decrypted_data[len(header):]
         
         # Write the decrypted original data back to the file
-        with open(file_path, 'wb') as file:
+        with open(file_name, 'wb') as file:
             file.write(original_data)
 
 

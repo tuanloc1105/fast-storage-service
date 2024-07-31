@@ -2,6 +2,9 @@ package utils
 
 import (
 	"bufio"
+	"context"
+	"errors"
+	"fast-storage-go-service/constant"
 	"fmt"
 	"io"
 	"os"
@@ -62,10 +65,20 @@ func ReadFileFromPath(path ...string) []byte {
 	return buffer
 }
 
-func FileEncryption(filePathToEncrypt string) {
-
+func FileEncryption(ctx context.Context, filePathToEncrypt string) error {
+	command := fmt.Sprintf(constant.PythonEncryptFileCommand, constant.FileCryptoSecretKeyPath, filePathToEncrypt)
+	if _, fileEncryptionStderr, fileEncryptionError := Shellout(ctx, command); fileEncryptionError != nil || fileEncryptionStderr != "" {
+		return errors.New(fmt.Sprint(fileEncryptionError, fileEncryptionStderr))
+	} else {
+		return nil
+	}
 }
 
-func FileDecryption(filePathToDecrypt string) {
-
+func FileDecryption(ctx context.Context, filePathToEncrypt string) error {
+	command := fmt.Sprintf(constant.PythonDecryptFileCommand, constant.FileCryptoSecretKeyPath, filePathToEncrypt)
+	if _, fileDecryptionStderr, fileDecryptionError := Shellout(ctx, command); fileDecryptionError != nil || fileDecryptionStderr != "" {
+		return errors.New(fmt.Sprint(fileDecryptionError, fileDecryptionStderr))
+	} else {
+		return nil
+	}
 }

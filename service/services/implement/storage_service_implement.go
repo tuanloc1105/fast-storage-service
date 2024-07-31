@@ -824,6 +824,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 			)
 			return
 		}
+		if encryptionError := utils.FileEncryption(h.Ctx, finalFileLocation); encryptionError != nil {
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", finalFileLocation))
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading.",
+				),
+			)
+			return
+		}
 	}
 
 	c.JSON(
@@ -906,6 +919,18 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 
 	fileNameToDownload := fileNameToDownloadFromRequest
 	// finalFileName := fileNameToDownload
+	if decryptionError := utils.FileDecryption(h.Ctx, folderToView+fileNameToDownload); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				folderToView+fileNameToDownload+" has an error while downloading.",
+			),
+		)
+		return
+	}
 	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
 	if openFileError != nil {
 		c.AbortWithStatusJSON(
@@ -923,6 +948,19 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 		closeFileError := file.Close()
 		if closeFileError != nil {
 			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+		if encryptionError := utils.FileEncryption(h.Ctx, folderToView+fileNameToDownload); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					folderToView+fileNameToDownload,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", folderToView+fileNameToDownload))
 		}
 	}(fileToReturnToClient)
 
@@ -1019,6 +1057,19 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		return
 	}
 
+	if decryptionError := utils.FileDecryption(h.Ctx, folderToDownload); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				folderToDownload+" has an error while downloading.",
+			),
+		)
+		return
+	}
+
 	// folderToDownload is the location that will be zip
 	// but when zipping, the location to run command must be the outside folder
 	// so this line of codes will get the outside folder location
@@ -1104,6 +1155,19 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	c.Header("Cache-Control", "must-revalidate")
 	c.Writer.Write(fileData)
 	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
+	if encryptionError := utils.FileEncryption(h.Ctx, folderToDownload); encryptionError != nil {
+		log.WithLevel(
+			constant.Error,
+			h.Ctx,
+			fmt.Sprintln(
+				"cannot ecrypt file",
+				folderToDownload,
+				". starting to remove. error: ",
+				encryptionError,
+			),
+		)
+		utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", folderToDownload))
+	}
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
@@ -1937,6 +2001,18 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 			return
 		}
 		// listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, fileFullPath)
+		if decryptionError := utils.FileDecryption(h.Ctx, currentFileElementTrim); decryptionError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					currentFileElementTrim+" has an error while downloading.",
+				),
+			)
+			return
+		}
 		listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, currentFileElementTrim)
 	}
 	log.WithLevel(constant.Debug, h.Ctx, fmt.Sprint("list of file to be downloaded\n", listOfFullPathFileLocationToDownload))
@@ -2003,4 +2079,19 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 	c.Header("Cache-Control", "must-revalidate")
 	c.Writer.Write(fileData)
 	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+	for _, currentFile := range listOfFullPathFileLocationToDownload {
+		if encryptionError := utils.FileEncryption(h.Ctx, currentFile); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					currentFile,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", currentFile))
+		}
+	}
 }

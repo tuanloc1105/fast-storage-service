@@ -38,9 +38,10 @@ def is_file_encrypted(file_path, key):
 
 
 def encrypt_file(secret_key_directory, file_name):
-    if is_file_encrypted(file_name, secret_key_directory):
-        return
     key = load_key(secret_key_directory)
+    if is_file_encrypted(file_name, key):
+        print("this file was encrypted")
+        sys.exit(1)
     fernet = Fernet(key)
     
     with open(file_name, "rb") as file:

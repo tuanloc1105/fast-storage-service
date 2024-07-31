@@ -27,8 +27,8 @@ const AscKeyword = "ASC"
 const DescKeyword = "DESC"
 const EmptyString = ""
 const FileCryptoSecretKeyPath = "additional_source_code/secret.key"
-const PythonEncryptFile = "additional_source_code/python_encrypt.py"
-const PythonDecryptFile = "additional_source_code/python_decrypt.py"
+const PythonEncryptFileCommand = "python3.12 additional_source_code/python_encrypt.py '%s' '%s'"
+const PythonDecryptFileCommand = "python3.12 additional_source_code/python_decrypt.py '%s' '%s'"
 const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
 	ContentTypeBinary    = "application/octet-stream"
@@ -206,5 +206,9 @@ var (
 	FileToDownloadInvalidError = ErrorEnums{
 		ErrorCode:    1027,
 		ErrorMessage: "File to download invalid",
+	}
+	FileCryptoError = ErrorEnums{
+		ErrorCode:    1028,
+		ErrorMessage: "File can not encrypt or decrypt",
 	}
 )
