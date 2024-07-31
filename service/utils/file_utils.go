@@ -61,3 +61,11 @@ func ReadFileFromPath(path ...string) []byte {
 	}
 	return buffer
 }
+
+func FileEncryption(filePathToEncrypt string) {
+
+}
+
+func FileDecryption(filePathToDecrypt string) {
+
+}
