@@ -42,6 +42,8 @@ def decrypt_file(secret_key_directory, file_name):
     if not is_file_encrypted(file_name, key):
         print("this file was not encrypted")
         sys.exit(1)
+    if file_name.endswith(".log"):
+        return
     fernet = Fernet(key)
     
     with open(file_name, "rb") as file:
