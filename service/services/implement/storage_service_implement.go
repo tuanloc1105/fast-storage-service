@@ -2097,7 +2097,7 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 }
 
 func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
-	ctx, isSuccess := utils.PrepareContext(c)
+	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {
 		return
 	}
@@ -2116,7 +2116,7 @@ func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
 	}
 	if apiKey == "" || strings.Compare(apiKey, encryptFolderApiKey) != 0 {
 		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
+			http.StatusForbidden,
 			utils.ReturnResponse(
 				c,
 				constant.Forbidden,
