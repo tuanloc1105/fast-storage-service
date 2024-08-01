@@ -1,7 +1,7 @@
 services:
   
   encrypt-folder-sheduler:
-    container_name: encrypt-folder-sheduler
+    container_name: image_name_of_encrypt_folder_sheduler
     restart: on-failure
     image: fs_encrypt_folder_sheduler:latest
     environment:
