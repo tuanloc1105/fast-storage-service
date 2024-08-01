@@ -27,3 +27,4 @@ splunk_token: MmVlZTVjNGUtNTRkYy00OTk1LWIyOGUtMWVkYmU1ODNmMTli
 splunk_source: localhost
 splunk_sourcetype: fs-service
 splunk_index: fs-storage
+encrypt_folder_api_key: RG5YNTIxV2tzNjg0U29GMDk3ckFQOTI1VGpVNTU1RHA=
