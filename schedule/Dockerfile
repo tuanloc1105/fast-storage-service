@@ -8,4 +8,4 @@ COPY ./service_scheduler.py /service_scheduler.py
 RUN pip3.12 install schedule
 RUN pip3.12 install requests
 
-CMD ["/go_app"]
+CMD ["/run_scheduler.sh"]
