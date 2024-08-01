@@ -86,7 +86,7 @@ clear
 print_message "Deloying new version of service with images tag: ${images_tag}"
 cd ./schedule
 
-print_message_and_run_input_command "Change docker compose image name" "sed -i \"s|image_name_of_encrypt_folder_sheduler|$final_image_name|\" docker-compose.yml"
+print_message_and_run_input_command "Change docker compose image name" "sed -i \"s|image_name_of_encrypt_folder_sheduler|$final_image_name|\" docker-compose.yaml"
 
 print_message "Uploading necessary file to target host $ssh_host"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "mkdir -p ${target_dir}"
