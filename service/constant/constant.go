@@ -52,7 +52,7 @@ type LogKey string
 const UsernameLogKey LogKey = "username"
 const UserIdLogKey LogKey = "userId"
 const TraceIdLogKey LogKey = "traceId"
-const LogPattern = "[%s] [%s] [%s] 👉️ \t%s"
+const LogPattern = "[%s] [%s] [%s] >>>>>>> \t%s"
 
 var (
 	Success = ErrorEnums{
