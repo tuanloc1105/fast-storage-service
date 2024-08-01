@@ -135,9 +135,9 @@ var (
 		ErrorCode:    1010,
 		ErrorMessage: "Check maximun storage error",
 	}
-	UploadFileSizeExceeds = ErrorEnums{
+	UploadFileError = ErrorEnums{
 		ErrorCode:    1011,
-		ErrorMessage: "Upload file size exceeds the limit",
+		ErrorMessage: "Upload file error",
 	}
 	RemoveFileError = ErrorEnums{
 		ErrorCode:    1012,

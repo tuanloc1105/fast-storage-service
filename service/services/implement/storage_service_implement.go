@@ -111,7 +111,7 @@ func (h StorageHandler) UserStorageStatus(c *gin.Context) {
 	h.Ctx = ctx
 	systemRootFolder := log.GetSystemRootFolder()
 
-	if maximunStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
+	if maximumStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
@@ -123,7 +123,7 @@ func (h StorageHandler) UserStorageStatus(c *gin.Context) {
 		return
 	} else {
 		result := payload.UserStorageStatus{
-			MaximunSize: maximunStorageSize,
+			MaximunSize: maximumStorageSize,
 			Used:        currentStorageSize,
 		}
 
@@ -664,14 +664,14 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
-	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+	if checkMaximumStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximumStorageError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.CheckMaximunStorageError,
 				nil,
-				checkMaximunStorageError.Error(),
+				checkMaximumStorageError.Error(),
 			),
 		)
 		return
@@ -763,7 +763,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 				http.StatusInternalServerError,
 				utils.ReturnResponse(
 					c,
-					constant.UploadFileSizeExceeds,
+					constant.UploadFileError,
 					nil,
 					checkUploadingFileSize.Error(),
 				),
