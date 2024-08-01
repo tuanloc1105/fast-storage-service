@@ -26,6 +26,10 @@ const RarFileTimeLayout = "20060102150405"
 const AscKeyword = "ASC"
 const DescKeyword = "DESC"
 const EmptyString = ""
+const FileCryptoSecretKeyPath = "additional_source_code/secret.key"
+const PythonEncryptFileCommand = "python3.12 additional_source_code/python_encrypt.py '%s' '%s'"
+const PythonDecryptFileCommand = "python3.12 additional_source_code/python_decrypt.py '%s' '%s'"
+const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
 	ContentTypeBinary    = "application/octet-stream"
 	ContentTypeForm      = "application/x-www-form-urlencoded"
@@ -186,5 +190,25 @@ var (
 	ZipFolderError = ErrorEnums{
 		ErrorCode:    1023,
 		ErrorMessage: "Cannot zip folder",
+	}
+	EmptyUserToShareFileOrFolderError = ErrorEnums{
+		ErrorCode:    1024,
+		ErrorMessage: "Empty user to share file or folder",
+	}
+	InvalidListOfUserEmailToShareError = ErrorEnums{
+		ErrorCode:    1025,
+		ErrorMessage: "Invalid list of user email to share",
+	}
+	FileNotExistError = ErrorEnums{
+		ErrorCode:    1026,
+		ErrorMessage: "File does not exist",
+	}
+	FileToDownloadInvalidError = ErrorEnums{
+		ErrorCode:    1027,
+		ErrorMessage: "File to download invalid",
+	}
+	FileCryptoError = ErrorEnums{
+		ErrorCode:    1028,
+		ErrorMessage: "File can not encrypt or decrypt",
 	}
 )

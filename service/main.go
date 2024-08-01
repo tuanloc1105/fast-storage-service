@@ -77,6 +77,12 @@ func main() {
 
 	applicationPort := "8080"
 
+	// Serve static files
+	router.Static("/static", "./static")
+
+	// Serve HTML template
+	router.LoadHTMLGlob("templates/*")
+
 	router.GET(constant.BaseApiPath+"/", func(ctx *gin.Context) {
 		ctx.Data(
 			http.StatusOK,
