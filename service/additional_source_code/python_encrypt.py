@@ -18,17 +18,17 @@ def is_input_path_a_file(path: str):
 
 def is_file_encrypted(file_path, key):
     fernet = Fernet(key)
-    
+
     # Read the encrypted data
-    with open(file_path, 'rb') as file:
+    with open(file_path, "rb") as file:
         encrypted_data = file.read()
-    
+
     try:
         # Attempt to decrypt the data
         decrypted_data = fernet.decrypt(encrypted_data)
-        
+
         # Check for the unique header
-        header = b'ENCRYPTED'
+        header = b"FAST_STORAGE_SERVICE_CRYPTO"
         if decrypted_data.startswith(header):
             return True
         else:
@@ -45,22 +45,22 @@ def encrypt_file(secret_key_directory, file_name):
     if file_name.endswith(".log"):
         return
     fernet = Fernet(key)
-    
+
     with open(file_name, "rb") as file:
         # read all file data
         file_data = file.read()
-        
+
     # encrypt data
-    header = b'ENCRYPTED'
+    header = b"ENCRYPTED"
     data_to_encrypt = header + file_data
     encrypted_data = fernet.encrypt(data_to_encrypt)
-    
+
     # write the encrypted file
     with open(file_name, "wb") as file:
         file.write(encrypted_data)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     path_of_secret_key = sys.argv[1]
     path_of_file = sys.argv[2]
     if is_input_path_a_file(path_of_file):
@@ -72,7 +72,7 @@ if __name__=="__main__":
             for file in files:
                 file_path = os.path.join(root, file)
                 try:
-                    print(f'Working on file: {file_path}')
+                    print(f"Working on file: {file_path}")
                     encrypt_file(path_of_secret_key, file_path)
                 except (IOError, OSError):
                     pass
