@@ -129,4 +129,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.DownloadMultipleFile,
 		utils.ErrorHandler)
+
+	storageRouter.POST("/crypto_every_folder",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CryptoEveryFolder,
+		utils.ErrorHandler)
 }

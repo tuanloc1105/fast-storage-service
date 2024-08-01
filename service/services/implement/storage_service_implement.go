@@ -2095,3 +2095,77 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 		}
 	}
 }
+
+func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	apiKey := c.Request.Header.Get("api-key")
+	encryptFolderApiKey := os.Getenv("ENCRYPT_FOLDER_API_KEY")
+	if encryptFolderApiKey == "" {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+			),
+		)
+		return
+	}
+	if apiKey == "" || strings.Compare(apiKey, encryptFolderApiKey) != 0 {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.Forbidden,
+				nil,
+				"Invalid api key to access this resource",
+			),
+		)
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.EncryptEveryFolderRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	rootFolderToEncryptOrDecrypt := log.GetSystemRootFolder()
+	if requestPayload.Request.Encrypt {
+		if encryptionError := utils.FileEncryption(h.Ctx, rootFolderToEncryptOrDecrypt); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					rootFolderToEncryptOrDecrypt,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+		}
+	} else {
+		if decryptionError := utils.FileDecryption(h.Ctx, rootFolderToEncryptOrDecrypt); decryptionError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					rootFolderToEncryptOrDecrypt+" has an error while downloading.",
+				),
+			)
+			return
+		}
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}

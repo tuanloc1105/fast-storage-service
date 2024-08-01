@@ -1,5 +1,13 @@
 package payload
 
+type EncryptEveryFolderRequestBodyValue struct {
+	Encrypt bool `json:"encrypt" binding:"required"`
+}
+
+type EncryptEveryFolderRequestBody struct {
+	Request EncryptEveryFolderRequestBodyValue `json:"request" binding:"required"`
+}
+
 type RegisterRequestBodyValue struct {
 	Username        string `json:"username" binding:"required"`
 	Password        string `json:"password" binding:"required"`
