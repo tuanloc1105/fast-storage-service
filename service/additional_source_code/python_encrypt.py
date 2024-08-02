@@ -52,7 +52,7 @@ def encrypt_file(secret_key_directory, file_name):
         file_data = file.read()
 
     # encrypt data
-    header = b"ENCRYPTED"
+    header = b"FAST_STORAGE_SERVICE_CRYPTO"
     data_to_encrypt = header + file_data
     encrypted_data = fernet.encrypt(data_to_encrypt)
 

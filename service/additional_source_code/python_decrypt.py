@@ -60,6 +60,8 @@ def decrypt_file(secret_key_directory, file_name):
         # Write the decrypted original data back to the file
         with open(file_name, "wb") as file:
             file.write(original_data)
+    else:
+        print("wrong encrypt format")
 
 
 if __name__ == "__main__":
