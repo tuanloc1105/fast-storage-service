@@ -9,7 +9,7 @@ if __name__ == "__main__":
     for root, dirs, files in os.walk(input_path_of_directory):
         if not dirs and not files:
             print('empty directory')
-            sys.exit(0)
+            sys.exit(1)
         for file in files:
             file_path = os.path.join(root, file)
             try:
