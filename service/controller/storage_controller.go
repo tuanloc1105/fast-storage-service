@@ -114,4 +114,26 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.EditTextFileContent,
 		utils.ErrorHandler)
+
+	storageRouter.POST("/share_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.ShareFile,
+		utils.ErrorHandler)
+
+	storageRouter.GET("/download_multiple_file",
+		utils.GetTokenInParamAndSetToHeader(),
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.DownloadMultipleFile,
+		utils.ErrorHandler)
+
+	storageRouter.POST("/crypto_every_folder",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CryptoEveryFolder,
+		utils.ErrorHandler)
 }

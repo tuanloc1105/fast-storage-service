@@ -21,6 +21,7 @@ env info:
     "MOUNT_FOLDER": "/mount",
     "SMTP_HOST": "smtp.office365.com",
     "SMTP_PORT": "587",
+    "ENCRYPT_FOLDER_API_KEY": "DnX521Wks684SoF097rAP925TjU555Dp",
     "OUTLOOK_USERNAME": "",
     "OUTLOOK_PASSWORD": ""
 }

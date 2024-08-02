@@ -45,7 +45,7 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 	var baseEntity model.BaseEntity = utils.GenerateNewBaseEntity(h.Ctx)
 	if loginResult, loginError := keycloak.KeycloakLogin(h.Ctx, requestPayload.Request.Username, requestPayload.Request.Password); loginError != nil {
 
-		h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+		databaseTransactionResult := h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
 			userLoginCorruptedLog := model.UserAuthenticationLog{
 				BaseEntity:                     baseEntity,
 				Username:                       requestPayload.Request.Username,
@@ -58,6 +58,18 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 			}
 			return nil
 		})
+
+		if databaseTransactionResult != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.QueryStatementError,
+					nil,
+				),
+			)
+			return
+		}
 
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
@@ -72,7 +84,7 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 	} else {
 		if loginResult.Error != "" {
 
-			h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+			databaseTransactionResult := h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
 				userLoginFailedLog := model.UserAuthenticationLog{
 					BaseEntity:                     baseEntity,
 					Username:                       requestPayload.Request.Username,
@@ -86,6 +98,18 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 				return nil
 			})
 
+			if databaseTransactionResult != nil {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.QueryStatementError,
+						nil,
+					),
+				)
+				return
+			}
+
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				utils.ReturnResponse(
@@ -97,7 +121,7 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 			return
 		}
 
-		h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
+		databaseTransactionResult := h.DB.WithContext(h.Ctx).Transaction(func(tx *gorm.DB) error {
 			userLoginSuccessfullyLog := model.UserAuthenticationLog{
 				BaseEntity:                     baseEntity,
 				Username:                       requestPayload.Request.Username,
@@ -110,6 +134,18 @@ func (h AuthenticateHandler) Login(c *gin.Context) {
 			}
 			return nil
 		})
+
+		if databaseTransactionResult != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.QueryStatementError,
+					nil,
+				),
+			)
+			return
+		}
 
 		protocolOpenidConnectTokenResponse := payload.ProtocolOpenidConnectTokenResponse(loginResult)
 		c.JSON(
@@ -330,7 +366,14 @@ func (h AuthenticateHandler) Register(c *gin.Context) {
 				Subject: "ACTIVATION ACCOUNT LINK",
 				Content: htmlContentToBeSent,
 			}
-			sendHtmlEmailContent(h.Ctx, emailProperties)
+			accountRegisterEmailSendingError := sendHtmlEmailContent(h.Ctx, emailProperties)
+			if accountRegisterEmailSendingError != nil {
+				log.WithLevel(
+					constant.Error,
+					h.Ctx,
+					fmt.Sprint("An error has been occurred while sending registration link to user: ", accountRegisterEmailSendingError),
+				)
+			}
 		}
 
 		c.JSON(
@@ -424,13 +467,14 @@ func (h AuthenticateHandler) ActiveAccount(c *gin.Context) {
 		)
 		return
 	}
-	c.Data(
-		http.StatusOK,
-		constant.ContentTypeHTML,
-		[]byte(
-			`
-			<h1>Active successfully</h1>
-		`,
-		),
-	)
+	// c.Data(
+	// 	http.StatusOK,
+	// 	constant.ContentTypeHTML,
+	// 	[]byte(
+	// 		`
+	// 		<h1>Active successfully</h1>
+	// 	`,
+	// 	),
+	// )
+	c.HTML(http.StatusOK, "index.html", nil)
 }

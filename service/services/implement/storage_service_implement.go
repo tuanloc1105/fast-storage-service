@@ -2,7 +2,9 @@ package implement
 
 import (
 	"context"
+	"fast-storage-go-service/config"
 	"fast-storage-go-service/constant"
+	"fast-storage-go-service/keycloak"
 	"fast-storage-go-service/log"
 	"fast-storage-go-service/model"
 	"fast-storage-go-service/payload"
@@ -822,6 +824,19 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 			)
 			return
 		}
+		if encryptionError := utils.FileEncryption(h.Ctx, finalFileLocation); encryptionError != nil {
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", finalFileLocation))
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					fileUploadName+fileUploadExtension+" has an error while uploading.",
+				),
+			)
+			return
+		}
 	}
 
 	c.JSON(
@@ -904,6 +919,18 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 
 	fileNameToDownload := fileNameToDownloadFromRequest
 	// finalFileName := fileNameToDownload
+	if decryptionError := utils.FileDecryption(h.Ctx, folderToView+fileNameToDownload); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				folderToView+fileNameToDownload+" has an error while downloading.",
+			),
+		)
+		return
+	}
 	fileToReturnToClient, openFileError := os.Open(folderToView + fileNameToDownload)
 	if openFileError != nil {
 		c.AbortWithStatusJSON(
@@ -921,6 +948,19 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 		closeFileError := file.Close()
 		if closeFileError != nil {
 			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+		if encryptionError := utils.FileEncryption(h.Ctx, folderToView+fileNameToDownload); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					folderToView+fileNameToDownload,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", folderToView+fileNameToDownload))
 		}
 	}(fileToReturnToClient)
 
@@ -1017,6 +1057,19 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 		return
 	}
 
+	if decryptionError := utils.FileDecryption(h.Ctx, folderToDownload); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				folderToDownload+" has an error while downloading.",
+			),
+		)
+		return
+	}
+
 	// folderToDownload is the location that will be zip
 	// but when zipping, the location to run command must be the outside folder
 	// so this line of codes will get the outside folder location
@@ -1042,7 +1095,6 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	default:
 		zipFolderCommand = fmt.Sprintf("zip -r '%s.zip' '%s/'", zipFileName, folderToBeZipped)
 		zipExtension = ".zip"
-
 	}
 
 	_, _, zipError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipFolderCommand, outsideFolderLocation, true, false)
@@ -1103,6 +1155,19 @@ func (h StorageHandler) DownloadFolder(c *gin.Context) {
 	c.Header("Cache-Control", "must-revalidate")
 	c.Writer.Write(fileData)
 	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName+zipExtension, outsideFolderLocation)
+	if encryptionError := utils.FileEncryption(h.Ctx, folderToDownload); encryptionError != nil {
+		log.WithLevel(
+			constant.Error,
+			h.Ctx,
+			fmt.Sprintln(
+				"cannot ecrypt file",
+				folderToDownload,
+				". starting to remove. error: ",
+				encryptionError,
+			),
+		)
+		utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", folderToDownload))
+	}
 }
 
 func (h StorageHandler) RemoveFile(c *gin.Context) {
@@ -1176,31 +1241,31 @@ func (h StorageHandler) RemoveFile(c *gin.Context) {
 
 	}
 
-	fileNameToDownload := requestPayload.Request.FileNameToRemove
+	for _, fileNameToBeRemoved := range requestPayload.Request.FileNameToRemove {
+		removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToBeRemoved)
 
-	removeFileCommand := fmt.Sprintf("rm -rf '%s'", folderToView+fileNameToDownload)
-
-	if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utils.ReturnResponse(
-				c,
-				constant.RemoveFileError,
-				nil,
-				removeFileCommandError.Error(),
-			),
-		)
-		return
-	} else {
-		c.JSON(
-			http.StatusOK,
-			utils.ReturnResponse(
-				c,
-				constant.Success,
-				nil,
-			),
-		)
+		if _, _, removeFileCommandError := utils.Shellout(h.Ctx, removeFileCommand); removeFileCommandError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.RemoveFileError,
+					nil,
+					removeFileCommandError.Error(),
+				),
+			)
+			return
+		}
 	}
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
 }
 
 func (h StorageHandler) SetPasswordForFolder(c *gin.Context) {
@@ -1666,6 +1731,434 @@ EOF`,
 			),
 		)
 		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) ShareFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.ShareFileBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if strings.Contains(requestPayload.Request.Folder, "..") ||
+		strings.Contains(requestPayload.Request.File, "..") ||
+		strings.Contains(requestPayload.Request.File, "/") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+	if requestPayload.Request.UserEmailToShare == nil || len(requestPayload.Request.UserEmailToShare) < 1 {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.EmptyUserToShareFileOrFolderError,
+				nil,
+			),
+		)
+		return
+	}
+
+	listOfInvalidUsername := make(map[string]string)
+	listOfUsernameToShare := []string{}
+
+	// Get keycloak admin token
+
+	adminProtocolOpenidConnectToken, protocolOpenidConnectTokenError := keycloak.KeycloakLogin(ctx, config.KeycloakAdminUsername, config.KeycloakAdminPassword)
+
+	if protocolOpenidConnectTokenError != nil {
+		log.WithLevel(constant.Error, h.Ctx, protocolOpenidConnectTokenError.Error())
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"An error has been occurred while check list of user to be shared",
+			),
+		)
+		return
+	}
+
+	if adminProtocolOpenidConnectToken.Error != "" {
+		log.WithLevel(constant.Error, h.Ctx, fmt.Sprint(adminProtocolOpenidConnectToken.Error, "-", adminProtocolOpenidConnectToken.ErrorDescription))
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+				"An error has been occurred while check list of user to be shared",
+			),
+		)
+		return
+	}
+	if requestPayload.Request.UserEmailToShare[0] != "all" {
+		for _, username := range requestPayload.Request.UserEmailToShare {
+			searchResults, searchError := keycloak.KeycloakSearchUser(h.Ctx, adminProtocolOpenidConnectToken.AccessToken, username)
+			if searchError != nil {
+				listOfInvalidUsername[username] = searchError.Error()
+				continue
+			}
+			if len(searchResults) < 1 {
+				listOfInvalidUsername[username] = "user does not exist"
+				continue
+			}
+			if len(searchResults) > 1 {
+				listOfInvalidUsername[username] = "email is not unique"
+				continue
+			}
+			listOfUsernameToShare = append(listOfUsernameToShare, searchResults[0].Username)
+		}
+	}
+	if len(listOfInvalidUsername) > 0 {
+		detailMessage := ""
+		first := true
+		for key, value := range listOfInvalidUsername {
+			if !first {
+				detailMessage += "<br>"
+			}
+			detailMessage += fmt.Sprintf("%s: %s", key, value)
+			first = false
+		}
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.InvalidListOfUserEmailToShareError,
+				nil,
+				detailMessage,
+			),
+		)
+		return
+	}
+
+	currentUsername, getCurrentUsernameError := utils.GetCurrentUsername(c)
+	if getCurrentUsernameError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			utils.ReturnResponse(
+				c,
+				constant.Unauthorized,
+				nil,
+			),
+		)
+		return
+	}
+
+	listOfUserCanAccess := fmt.Sprint(
+		",",
+		strings.Join(listOfUsernameToShare, ","),
+		",",
+	)
+
+	shareToken := utils.GenerateRandomString(10)
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.Folder)
+	baseEntity := utils.GenerateNewBaseEntity(h.Ctx)
+	currentTime := time.Now()
+	currentTime = currentTime.Add(time.Duration(requestPayload.Request.TheTimeIntervalInMinutesToBeShared) * time.Minute)
+	userFileAndFolderSharing := model.UserFileAndFolderSharing{
+		BaseEntity:        baseEntity,
+		Username:          *currentUsername,
+		ListOfUsersShared: listOfUserCanAccess,
+		Directory:         folderToView,
+		FileName:          requestPayload.Request.File,
+		ShareToken:        shareToken,
+		ExpiredTime:       currentTime,
+	}
+	h.DB.WithContext(h.Ctx).Save(&userFileAndFolderSharing)
+
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}
+
+func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+
+	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CheckMaximunStorageError,
+				nil,
+				checkMaximunStorageError.Error(),
+			),
+		)
+		return
+	}
+
+	folderLocation := c.Query("locationToDownload")
+	credential := c.Query("credential")
+	// archiveType := c.Query("archiveType")
+	listOfFileToDownload := c.Query("listOfFileToDownload")
+
+	if listOfFileToDownload == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`listOfFileToDownload` cannot be empty",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	if folderLocation == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"`folderLocation` can not be empty",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToDownload := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
+	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToDownload, credential)
+	if checkFolderCredentialError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.SecureFolderInvalidCredentialError,
+				nil,
+				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	// check if there is a invalid file in `listOfFileToDownload`
+	var listOfFullPathFileLocationToDownload []string = []string{}
+	listOfFileToDownloadArray := strings.Split(listOfFileToDownload, "@231a")
+	for _, listOfFileElement := range listOfFileToDownloadArray {
+		currentFileElementTrim := strings.Trim(listOfFileElement, " ")
+		fileFullPath := folderToDownload + currentFileElementTrim
+		checkFileExistenceCommand := fmt.Sprint("ls -l ", "'", fileFullPath, "'")
+		_, checkFileExistenceStderr, checkFileExistenceError := utils.Shellout(h.Ctx, checkFileExistenceCommand)
+		if checkFileExistenceError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusBadRequest,
+				utils.ReturnResponse(
+					c,
+					constant.FileToDownloadInvalidError,
+					nil,
+					fmt.Sprint(checkFileExistenceError, " - ", checkFileExistenceStderr),
+				),
+			)
+			return
+		}
+		// listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, fileFullPath)
+		if decryptionError := utils.FileDecryption(h.Ctx, currentFileElementTrim); decryptionError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					currentFileElementTrim+" has an error while downloading.",
+				),
+			)
+			return
+		}
+		listOfFullPathFileLocationToDownload = append(listOfFullPathFileLocationToDownload, currentFileElementTrim)
+	}
+	log.WithLevel(constant.Debug, h.Ctx, fmt.Sprint("list of file to be downloaded\n", listOfFullPathFileLocationToDownload))
+	zipFileName := fmt.Sprint(uuid.New().String(), ".zip")
+	listOfFileCommand := ""
+	for _, currentFilePath := range listOfFullPathFileLocationToDownload {
+		listOfFileCommand += fmt.Sprint("'", currentFilePath, "'", " ")
+	}
+	zipListOfFileCommand := fmt.Sprintf("zip %s %s", zipFileName, strings.TrimSpace(listOfFileCommand))
+	_, zipFileStderr, zipFileError := utils.ShelloutAtSpecificDirectory(h.Ctx, zipListOfFileCommand, folderToDownload)
+	if zipFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.ZipFolderError,
+				nil,
+				fmt.Sprint(zipFileError, " - ", zipFileStderr),
+			),
+		)
+		return
+	}
+	fileToReturnToClient, openFileError := os.Open(folderToDownload + zipFileName)
+	if openFileError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot open file "+zipFileName+" to download. "+openFileError.Error(),
+			),
+		)
+		return
+	}
+	defer func(file *os.File) {
+		closeFileError := file.Close()
+		if closeFileError != nil {
+			log.WithLevel(constant.Warn, h.Ctx, closeFileError.Error())
+		}
+	}(fileToReturnToClient)
+
+	fileData, readFileToReturnToClientError := io.ReadAll(fileToReturnToClient)
+	if readFileToReturnToClientError != nil {
+		utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.DownloadFileError,
+				nil,
+				"cannot convert file "+zipFileName+" to download. "+readFileToReturnToClientError.Error(),
+			),
+		)
+		return
+	}
+	c.Status(200)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Type", constant.ContentTypeBinary)
+	c.Header("Content-Disposition", "attachment; filename="+zipFileName)
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Expires", "0")
+	c.Header("Cache-Control", "must-revalidate")
+	c.Writer.Write(fileData)
+	utils.ShelloutAtSpecificDirectory(h.Ctx, "rm -f "+zipFileName, folderToDownload)
+	for _, currentFile := range listOfFullPathFileLocationToDownload {
+		if encryptionError := utils.FileEncryption(h.Ctx, currentFile); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					currentFile,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+			utils.Shellout(h.Ctx, fmt.Sprintln("rm", "-f", currentFile))
+		}
+	}
+}
+
+func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	apiKey := c.Request.Header.Get("api-key")
+	encryptFolderApiKey := os.Getenv("ENCRYPT_FOLDER_API_KEY")
+	if encryptFolderApiKey == "" {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.InternalFailure,
+				nil,
+			),
+		)
+		return
+	}
+	if apiKey == "" || strings.Compare(apiKey, encryptFolderApiKey) != 0 {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.Forbidden,
+				nil,
+				"Invalid api key to access this resource",
+			),
+		)
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.EncryptEveryFolderRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	rootFolderToEncryptOrDecrypt := log.GetSystemRootFolder()
+	if requestPayload.Request.Encrypt {
+		if encryptionError := utils.FileEncryption(h.Ctx, rootFolderToEncryptOrDecrypt); encryptionError != nil {
+			log.WithLevel(
+				constant.Error,
+				h.Ctx,
+				fmt.Sprintln(
+					"cannot ecrypt file",
+					rootFolderToEncryptOrDecrypt,
+					". starting to remove. error: ",
+					encryptionError,
+				),
+			)
+		}
+	} else {
+		if decryptionError := utils.FileDecryption(h.Ctx, rootFolderToEncryptOrDecrypt); decryptionError != nil {
+			c.AbortWithStatusJSON(
+				http.StatusInternalServerError,
+				utils.ReturnResponse(
+					c,
+					constant.FileCryptoError,
+					nil,
+					rootFolderToEncryptOrDecrypt+" has an error while downloading.",
+				),
+			)
+			return
+		}
 	}
 	c.JSON(
 		http.StatusOK,

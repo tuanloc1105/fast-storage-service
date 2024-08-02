@@ -7,9 +7,11 @@ import (
 	"fast-storage-go-service/log"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,7 +19,7 @@ import (
 
 func CheckAndSetTraceId(c *gin.Context) {
 	if traceId, _ := c.Get(string(constant.TraceIdLogKey)); traceId == nil || traceId == "" {
-		c.Set(string(constant.TraceIdLogKey), uuid.New().String())
+		c.Set(string(constant.TraceIdLogKey), strings.Replace(uuid.New().String(), "-", constant.EmptyString, -1))
 	}
 }
 
@@ -43,11 +45,13 @@ func GetPointerOfAnyValue[T any](a T) *T {
 }
 
 func Shellout(ctx context.Context, command string, isLog ...bool) (string, string, error) {
+	currentCommandRunningId := strings.Replace(uuid.New().String(), "-", constant.EmptyString, -1)
 	if len(isLog) < 1 || (len(isLog) == 1 && isLog[0]) {
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"Start to executing command: %s",
+			"[%s] == Start to executing command: %s",
+			currentCommandRunningId,
 			HideSensitiveInformationOfCurlCommand(command),
 		)
 	}
@@ -63,7 +67,8 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 		log.WithLevel(
 			constant.Error,
 			ctx,
-			"%s not implemented",
+			"[%s] == %s not implemented",
+			currentCommandRunningId,
 			runtime.GOOS,
 		)
 		return "", "", fmt.Errorf("%s not implemented", runtime.GOOS)
@@ -75,31 +80,24 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 	stdoutString := strings.TrimPrefix(strings.TrimSuffix(stdout.String(), "\n"), "\n")
 	stderrString := strings.TrimPrefix(strings.TrimSuffix(stderr.String(), "\n"), "\n")
 	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
-		log.WithLevel(
-			constant.Info,
-			ctx,
-			"--- command exit status ---\n%d",
-			exitCode,
-		)
+		var finalStdoutString string
 		if IsStringAJson(stdoutString) {
-			log.WithLevel(
-				constant.Info,
-				ctx,
-				"--- stdout ---\n%s",
-				HideSensitiveJsonField(stdoutString),
-			)
+			finalStdoutString = HideSensitiveJsonField(stdoutString)
 		} else {
-			log.WithLevel(
-				constant.Info,
-				ctx,
-				"--- stdout ---\n%s",
-				stdoutString,
-			)
+			finalStdoutString = stdoutString
 		}
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"--- stderr ---\n%s",
+			`[%s] == command result:
+    - status code: %d
+    - stdout: 
+%s
+    - stderr: 
+%s`,
+			currentCommandRunningId,
+			exitCode,
+			finalStdoutString,
 			stderrString,
 		)
 	}
@@ -107,11 +105,13 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 }
 
 func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string, isLog ...bool) (string, string, error) {
-	if len(isLog) < 1 || (len(isLog) >= 1 && isLog[0]) {
+	currentCommandRunningId := strings.Replace(uuid.New().String(), "-", constant.EmptyString, -1)
+	if len(isLog) < 1 || (len(isLog) == 1 && isLog[0]) {
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"start to execute a command at directory:\n\t- command: %s\n\t- directory: %s",
+			"[%s] == Start to executing\n-command: %s\n-directory: %s",
+			currentCommandRunningId,
 			HideSensitiveInformationOfCurlCommand(command),
 			directory,
 		)
@@ -131,7 +131,8 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 		log.WithLevel(
 			constant.Error,
 			ctx,
-			"%s not implemented",
+			"[%s] == %s not implemented",
+			currentCommandRunningId,
 			runtime.GOOS,
 		)
 		return "", "", fmt.Errorf("%s not implemented", runtime.GOOS)
@@ -143,34 +144,38 @@ func ShelloutAtSpecificDirectory(ctx context.Context, command, directory string,
 	exitCode := cmd.ProcessState.ExitCode()
 	stdoutString := strings.TrimPrefix(strings.TrimSuffix(stdout.String(), "\n"), "\n")
 	stderrString := strings.TrimPrefix(strings.TrimSuffix(stderr.String(), "\n"), "\n")
-	if len(isLog) < 1 || (len(isLog) >= 2 && isLog[1]) {
-		log.WithLevel(
-			constant.Info,
-			ctx,
-			"--- command exit status ---\n%d",
-			exitCode,
-		)
+	if len(isLog) < 1 || (len(isLog) == 2 && isLog[1]) {
+		var finalStdoutString string
 		if IsStringAJson(stdoutString) {
-			log.WithLevel(
-				constant.Info,
-				ctx,
-				"--- stdout ---\n%s",
-				HideSensitiveJsonField(stdoutString),
-			)
+			finalStdoutString = HideSensitiveJsonField(stdoutString)
 		} else {
-			log.WithLevel(
-				constant.Info,
-				ctx,
-				"--- stdout ---\n%s",
-				stdoutString,
-			)
+			finalStdoutString = stdoutString
 		}
 		log.WithLevel(
 			constant.Info,
 			ctx,
-			"--- stderr ---\n%s",
+			`[%s] == command result:
+    - status code: %d
+    - stdout: 
+%s
+    - stderr: 
+%s`,
+			currentCommandRunningId,
+			exitCode,
+			finalStdoutString,
 			stderrString,
 		)
 	}
 	return stdoutString, stderrString, err
+}
+
+func GenerateRandomString(length int) string {
+	var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	randomString := make([]byte, length)
+	for i := range randomString {
+		randomString[i] = constant.Charset[seededRand.Intn(len(constant.Charset))]
+	}
+
+	return string(randomString)
 }

@@ -51,6 +51,16 @@ type UserFolderCredential struct {
 	LastFolderActivitiesTime time.Time  `json:"lastFolderActivitiesTime" gorm:"column:last_folder_activities_time;not null"` // folder idle time is 5 minutes last, if exceed then user have to be enter password again to view folder content
 }
 
+type UserFileAndFolderSharing struct {
+	BaseEntity        BaseEntity `gorm:"embedded" json:"baseInfo"`
+	Username          string     `json:"username" gorm:"column:username;not null"`
+	ListOfUsersShared string     `json:"listOfUsersShared" gorm:"column:list_of_users_shared"`
+	Directory         string     `json:"directory" gorm:"column:directory;not null"`
+	FileName          string     `json:"fileName" gorm:"column:file_name"`
+	ShareToken        string     `json:"shareToken" gorm:"column:share_token;not null"`
+	ExpiredTime       time.Time  `json:"expiredTime" gorm:"column:expired_time"`
+}
+
 // type Test struct {
 // 	BaseEntity                     `gorm:"embedded" json:"baseInfo"`
 // 	Username                       string    `json:"username" gorm:"column:Username;not null"`
@@ -81,4 +91,8 @@ func (UserStorageLimitationData) TableName() string {
 
 func (UserFolderCredential) TableName() string {
 	return "user_folder_credential"
+}
+
+func (UserFileAndFolderSharing) TableName() string {
+	return "user_file_and_folder_sharing"
 }

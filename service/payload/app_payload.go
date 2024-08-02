@@ -1,5 +1,13 @@
 package payload
 
+type EncryptEveryFolderRequestBodyValue struct {
+	Encrypt bool `json:"encrypt" binding:"required"`
+}
+
+type EncryptEveryFolderRequestBody struct {
+	Request EncryptEveryFolderRequestBodyValue `json:"request" binding:"required"`
+}
+
 type RegisterRequestBodyValue struct {
 	Username        string `json:"username" binding:"required"`
 	Password        string `json:"password" binding:"required"`
@@ -48,10 +56,10 @@ type GetAllElementInSpecificDirectoryBody struct {
 }
 
 type RemoveFileBodyValue struct {
-	LocationToRemove string `json:"locationToRemove" binding:"required"`
-	FileNameToRemove string `json:"fileNameToRemove"`
-	OtpCredential    string `json:"otpCredential"`
-	Credential       string `json:"credential"`
+	LocationToRemove string   `json:"locationToRemove" binding:"required"`
+	FileNameToRemove []string `json:"fileNameToRemove"`
+	OtpCredential    string   `json:"otpCredential"`
+	Credential       string   `json:"credential"`
 }
 
 type RemoveFileBody struct {
@@ -101,6 +109,27 @@ type CheckSecureFolderStatusBodyValue struct {
 
 type CheckSecureFolderStatusBody struct {
 	Request CheckSecureFolderStatusBodyValue `json:"request" binding:"required"`
+}
+
+type ShareFileBodyValue struct {
+	Folder                             string   `json:"folder" binding:"required"`
+	File                               string   `json:"file" binding:"required"`
+	UserEmailToShare                   []string `json:"userEmailToShare" binding:"required"`
+	TheTimeIntervalInMinutesToBeShared int      `json:"theTimeIntervalInMinutesToBeShared" binding:"required"`
+}
+
+type ShareFileBody struct {
+	Request ShareFileBodyValue `json:"request" binding:"required"`
+}
+
+type DownloadMultipleFileBodyValue struct {
+	Folder     string `json:"folder" binding:"required"`
+	File       string `json:"file" binding:"required"`
+	Credential string `json:"credential"`
+}
+
+type DownloadMultipleFileBody struct {
+	Request DownloadMultipleFileBodyValue `json:"request" binding:"required"`
 }
 
 type ProtocolOpenidConnectTokenResponse struct {

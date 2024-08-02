@@ -12,7 +12,7 @@ database_migration: false
 database_initialization_data: false
 keycloak_client_id: ZmFzdC1zdG9yYWdlLXNlcnZpY2U=
 keycloak_client_secret: b1NHRkZZcFB5UGQ5V0RPck0yczVpamFsOFJ3SHM4Mlo=
-keycloak_api_url: http://192.168.1.22:8180
+keycloak_api_url: http://192.168.1.22:8180/keycloak
 keycloak_admin_username: YWRtaW4=
 keycloak_admin_password: Y0dGemMzZHZjbVFnYzJuRHFuVWdhMmpodTQ5bA==
 account_active_host: https://polliwog-one-rarely.ngrok-free.app
@@ -27,3 +27,4 @@ splunk_token: MmVlZTVjNGUtNTRkYy00OTk1LWIyOGUtMWVkYmU1ODNmMTli
 splunk_source: localhost
 splunk_sourcetype: fs-service
 splunk_index: fs-storage
+encrypt_folder_api_key: RG5YNTIxV2tzNjg0U29GMDk3ckFQOTI1VGpVNTU1RHA=
