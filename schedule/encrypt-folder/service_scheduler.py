@@ -33,8 +33,8 @@ def call_fast_storage_api_to_encrypt_all_folder():
 
 
 # Schedule the task to run every hour
-# schedule.every().hour.at(":00").do(call_fast_storage_api_to_encrypt_all_folder)
-schedule.every().minute.at(":00").do(call_fast_storage_api_to_encrypt_all_folder)
+schedule.every().hour.at(":00").do(call_fast_storage_api_to_encrypt_all_folder)
+# schedule.every().minute.at(":00").do(call_fast_storage_api_to_encrypt_all_folder)
 
 # Keep the script running
 while True:
