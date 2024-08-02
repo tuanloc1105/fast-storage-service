@@ -29,7 +29,7 @@ def is_file_encrypted(file_path, key):
         decrypted_data = fernet.decrypt(encrypted_data)
 
         # Check for the unique header
-        header = b"ENCRYPTED"
+        header = b"FAST_STORAGE_SERVICE_CRYPTO"
         if decrypted_data.startswith(header):
             return True
         else:
