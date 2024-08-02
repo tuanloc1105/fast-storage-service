@@ -20,4 +20,5 @@ type StorageService interface {
 	ShareFile(c *gin.Context)
 	DownloadMultipleFile(c *gin.Context)
 	CryptoEveryFolder(c *gin.Context)
+	SearchFile(c *gin.Context)
 }

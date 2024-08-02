@@ -79,7 +79,7 @@ func (h StorageHandler) SystemStorageStatus(c *gin.Context) {
 				c,
 				constant.InternalFailure,
 				nil,
-				"not enought information",
+				"not enough information",
 			),
 		)
 		return
@@ -2168,4 +2168,60 @@ func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
 			nil,
 		),
 	)
+}
+
+func (h StorageHandler) SearchFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.SearchFileRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	userRootFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, "")
+	if requestPayload.Request.SearchingContent == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"searching content cannot be empty",
+			),
+		)
+	}
+	if searchFileResult, searchFileError := utils.ListAndFindFileInDirectory(h.Ctx, userRootFolder, requestPayload.Request.SearchingContent); searchFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"searching content cannot be empty",
+			),
+		)
+	} else {
+		currentUserId, _ := utils.GetCurrentUserId(c)
+		searchFileResultToReturnToClient := make([]string, 0)
+		for _, currentLine := range searchFileResult {
+			splitCurrentLineByUserId := strings.Split(currentLine, *currentUserId)
+			if len(splitCurrentLineByUserId) < 2 {
+				continue
+			} else {
+				searchFileResultToReturnToClient = append(searchFileResultToReturnToClient, splitCurrentLineByUserId[1][1:])
+			}
+		}
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				searchFileResultToReturnToClient,
+			),
+		)
+	}
 }

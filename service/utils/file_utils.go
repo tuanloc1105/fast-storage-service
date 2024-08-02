@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/charmbracelet/log"
 )
@@ -81,4 +82,41 @@ func FileDecryption(ctx context.Context, filePathToEncrypt string) error {
 	} else {
 		return nil
 	}
+}
+
+func ListAndFindFileInDirectory(ctx context.Context, path string, inputFileNameToFind ...string) ([]string, error) {
+	result := make([]string, 0)
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) || !info.IsDir() {
+		return result, errors.New("input directory does not exist or it is not a directory")
+	}
+
+	isListAllFile := true
+	if len(inputFileNameToFind) > 0 {
+		isListAllFile = false
+	}
+
+	command := fmt.Sprintf(constant.PythonListAllFileCommand, path)
+	if pythonListFileStdout, pythonListFileStderr, pythonListFileError := Shellout(ctx, command); pythonListFileError != nil || pythonListFileStderr != "" {
+		return result, errors.New(fmt.Sprint(pythonListFileError, pythonListFileStderr))
+	} else {
+		if strings.Contains(pythonListFileStdout, "empty directory") {
+			return result, nil
+		}
+		if isListAllFile {
+			for _, currentLine := range strings.Split(pythonListFileStdout, "\n") {
+				result = append(result, strings.TrimSpace(currentLine))
+			}
+		} else {
+			contentToCompare := inputFileNameToFind[0]
+			for _, currentLine := range strings.Split(pythonListFileStdout, "\n") {
+				trimSpaceCurrentLine := strings.TrimSpace(currentLine)
+				currentLineFileName := filepath.Base(trimSpaceCurrentLine)
+				if strings.Contains(currentLineFileName, contentToCompare) || currentLineFileName == contentToCompare {
+					result = append(result, trimSpaceCurrentLine)
+				}
+			}
+		}
+	}
+	return result, nil
 }

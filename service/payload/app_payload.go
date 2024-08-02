@@ -1,5 +1,13 @@
 package payload
 
+type SearchFileRequestBodyValue struct {
+	SearchingContent string `json:"searchingContent" binding:"required"`
+}
+
+type SearchFileRequestBody struct {
+	Request SearchFileRequestBodyValue `json:"request" binding:"required"`
+}
+
 type EncryptEveryFolderRequestBodyValue struct {
 	Encrypt bool `json:"encrypt" binding:"required"`
 }
