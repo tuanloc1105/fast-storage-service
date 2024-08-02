@@ -1,7 +1,6 @@
 import os
 import sys
 
-
 if __name__ == "__main__":
     input_path_of_directory = sys.argv[1]
     if not os.path.isdir(input_path_of_directory):

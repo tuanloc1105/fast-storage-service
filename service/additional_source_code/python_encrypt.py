@@ -1,5 +1,6 @@
 import os
 import sys
+
 from cryptography.fernet import Fernet, InvalidToken
 
 

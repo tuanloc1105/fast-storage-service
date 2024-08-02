@@ -1,5 +1,6 @@
 import os
 import sys
+
 from cryptography.fernet import Fernet, InvalidToken
 
 
@@ -54,7 +55,7 @@ def decrypt_file(secret_key_directory, file_name):
     decrypted_data = fernet.decrypt(encrypted_data)
     header = b"FAST_STORAGE_SERVICE_CRYPTO"
     if decrypted_data.startswith(header):
-        original_data = decrypted_data[len(header) :]
+        original_data = decrypted_data[len(header):]
 
         # Write the decrypted original data back to the file
         with open(file_name, "wb") as file:
