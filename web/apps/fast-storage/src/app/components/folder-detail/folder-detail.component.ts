@@ -9,12 +9,15 @@ import {
 import {
   LockFolderComponent,
   NewFolderComponent,
+  SearchComponent,
   UploadFileComponent,
 } from '@app/shared/components';
 import { Directory } from '@app/shared/model';
 import { ImageSrcPipe } from '@app/shared/pipe';
 import { LocalStorageJwtService } from '@app/shared/services';
 import { AppStore, StorageStore } from '@app/store';
+import { NgIconComponent, provideIcons } from '@ng-icons/core';
+import { heroPencilSquare, heroScissors } from '@ng-icons/heroicons/outline';
 import { patchState } from '@ngrx/signals';
 import { environment } from 'environments/environment';
 import {
@@ -32,6 +35,7 @@ import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
@@ -50,10 +54,12 @@ import { lastValueFrom } from 'rxjs';
     IconFieldModule,
     InputIconModule,
     InputTextModule,
+    NgIconComponent,
+    TooltipModule,
   ],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
-  providers: [],
+  providers: [provideIcons({ heroScissors, heroPencilSquare })],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FolderDetailComponent implements OnInit {
@@ -62,11 +68,12 @@ export class FolderDetailComponent implements OnInit {
 
   private readonly dialogService = inject(DialogService);
   private readonly confirmationService = inject(ConfirmationService);
-  private readonly messageService = inject(MessageService);
   private readonly localStorageJwtService = inject(LocalStorageJwtService);
+  private readonly messageService = inject(MessageService);
 
   public home: MenuItem | undefined;
   public selectedDirectory: Directory | null = null;
+  public checkedDirectories: Directory[] = [];
 
   public tableContextMenu: MenuItem[] = [];
   public speedDialItems: MenuItem[] = [];
@@ -114,7 +121,7 @@ export class FolderDetailComponent implements OnInit {
       {
         label: 'Download',
         icon: 'pi pi-fw pi-download',
-        command: () => this.downloadFile(),
+        command: () => this.downloadFile(this.selectedDirectory),
       },
       {
         label: 'Delete',
@@ -161,6 +168,71 @@ export class FolderDetailComponent implements OnInit {
     }
   }
 
+  public downloadFiles(): void {
+    this.checkedDirectories.forEach((directory) => {
+      this.downloadFile(directory);
+    });
+  }
+
+  public handleCopy() {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'File(s) copied',
+    });
+  }
+
+  public handleCut() {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'File(s) cut',
+    });
+  }
+
+  public handlePaste() {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'File(s) pasted',
+    });
+  }
+
+  public handleRename() {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'File(s) renamed',
+    });
+  }
+
+  public deleteFiles(event: Event): void {
+    this.confirmationService.confirm({
+      target: event.target as EventTarget,
+      message: 'Do you want to delete these file(s)?',
+      header: 'Delete Confirmation',
+      icon: 'pi pi-info-circle',
+      acceptButtonStyleClass: 'p-button-danger p-button-text',
+      rejectButtonStyleClass: 'p-button-text p-button-text',
+    });
+  }
+
+  public handleSearch(): void {
+    const dialogRef = this.dialogService.open(SearchComponent, {
+      position: 'top',
+      showHeader: false,
+      width: '700px',
+      contentStyle: { borderRadius: '12px', padding: '8px' },
+      dismissableMask: true,
+    });
+
+    dialogRef.onClose.subscribe((res) => {
+      patchState(this.storageStore, {
+        searchResults: [],
+      });
+    });
+  }
+
   private lockFolder(): void {
     this.dialogService.open(LockFolderComponent, {
       header: 'Lock folder',
@@ -189,24 +261,25 @@ export class FolderDetailComponent implements OnInit {
     });
   }
 
-  private async downloadFile() {
+  private async downloadFile(directory: Directory | null) {
     const accessToken = await lastValueFrom(
       this.localStorageJwtService.getAccessToken()
     );
-    if (!accessToken || !this.selectedDirectory) return;
+    if (!accessToken || !directory) return;
 
-    if (this.selectedDirectory.type === 'folder') {
+    if (directory.type === 'folder') {
       window.location.href = `${
         environment.apiUrl
       }/storage/download_folder?locationToDownload=${this.storageStore.currentPath()}&token=${accessToken}`;
       return;
     }
 
-    window.location.href = `${
-      environment.apiUrl
-    }/storage/download_file?fileNameToDownload=${
-      this.selectedDirectory?.name
-    }&locationToDownload=${this.storageStore.currentPath()}&token=${accessToken}`;
+    window.open(
+      `${environment.apiUrl}/storage/download_file?fileNameToDownload=${
+        directory?.name
+      }&locationToDownload=${this.storageStore.currentPath()}&token=${accessToken}`,
+      '_blank'
+    );
   }
 
   private removeFile(event: MenuItemCommandEvent): void {

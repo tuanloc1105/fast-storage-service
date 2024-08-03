@@ -57,3 +57,9 @@ export interface CheckFolderProtectionRequest {
     folder: string;
   };
 }
+
+export interface SearchRequest {
+  request: {
+    searchingContent: string;
+  };
+}

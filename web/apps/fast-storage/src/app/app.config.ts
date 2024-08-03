@@ -22,6 +22,7 @@ import {
 } from '@app/core/interceptor';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { DialogService } from 'primeng/dynamicdialog';
+import { provideNgIconsConfig } from '@ng-icons/core';
 
 export function HttpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http);
@@ -56,5 +57,8 @@ export const appConfig: ApplicationConfig = {
         },
       }),
     ]),
+    provideNgIconsConfig({
+      size: '1.2em',
+    }),
   ],
 };

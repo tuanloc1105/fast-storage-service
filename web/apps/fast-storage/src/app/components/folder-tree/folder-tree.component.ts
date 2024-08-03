@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { NewFolderComponent } from '@app/shared/components';
 import { Directory } from '@app/shared/model';
-import { getFullPath } from '@app/shared/utils';
+import { genBreadcrumb, getFullPath } from '@app/shared/utils';
 import { AppStore, StorageStore } from '@app/store';
 import { patchState } from '@ngrx/signals';
 import { TreeNode } from 'primeng/api';
@@ -115,13 +115,12 @@ export class FolderTreeComponent implements OnInit {
   }
 
   public addNewFolder() {
-    if (this.selectedDocumentFolder) {
-      const path = getFullPath(this.selectedDocumentFolder);
-      patchState(this.storageStore, { currentPath: path });
-    }
-
-    this.dialogService.open(NewFolderComponent, {
+    const dialogRef = this.dialogService.open(NewFolderComponent, {
       header: 'Create new folder',
+    });
+
+    dialogRef.onClose.subscribe(() => {
+      this.storageStore.getDirectory('');
     });
   }
 
@@ -132,20 +131,7 @@ export class FolderTreeComponent implements OnInit {
         path: path.join('/'),
         type: 'detailFolder',
       });
-      patchState(this.storageStore, {
-        currentPath: path.join('/'),
-        breadcrumb: path.map((p) => ({
-          label: p,
-          command: () => {
-            const nextPath = path.slice(0, path.indexOf(p) + 1).join('/');
-            this.storageStore.getDetailsDirectory({
-              path: nextPath,
-              type: 'detailFolder',
-            });
-          },
-          styleClass: 'cursor-pointer',
-        })),
-      });
+      genBreadcrumb(this.storageStore, path);
     }
   }
 

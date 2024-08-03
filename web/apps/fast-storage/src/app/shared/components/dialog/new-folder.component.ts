@@ -11,6 +11,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { FormsModule } from '@angular/forms';
 import { StorageStore } from '@app/store';
 import { DynamicDialogRef } from 'primeng/dynamicdialog';
+import { patchState } from '@ngrx/signals';
 
 @Component({
   selector: 'app-new-folder',
@@ -62,6 +63,7 @@ export class NewFolderComponent {
       () => {
         if (this.storageStore.hasNewFolder()) {
           this.closeNewFolderDialog();
+          patchState(this.storageStore, { hasNewFolder: false });
         }
       },
       { allowSignalWrites: true }
