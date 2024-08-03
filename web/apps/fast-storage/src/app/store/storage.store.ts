@@ -10,6 +10,7 @@ import {
   DownloadFileRequest,
   FolderProtectionRequest,
   RemoveFileRequest,
+  SearchRequest,
   StorageStatus,
   UploadFileRequest,
 } from '@app/shared/model';
@@ -38,6 +39,7 @@ type StorageState = {
   detailFolder: Directory[];
   currentPath: string;
   folderRequirePassword: boolean;
+  searchResults: string[];
 };
 
 const initialState: StorageState = {
@@ -53,6 +55,7 @@ const initialState: StorageState = {
   detailFolder: [],
   currentPath: '',
   folderRequirePassword: false,
+  searchResults: [],
 };
 
 export const StorageStore = signalStore(
@@ -114,7 +117,7 @@ export const StorageStore = signalStore(
       getDirectory: rxMethod<string>(
         pipe(
           switchMap((location) => {
-            patchState(store, { isLoading: true, hasNewFolder: false });
+            patchState(store, { isLoading: true });
             return storageService.getDirectory(location).pipe(
               tapResponse({
                 next: (res) => {
@@ -138,7 +141,6 @@ export const StorageStore = signalStore(
           switchMap((payload) => {
             patchState(store, {
               isLoading: true,
-              hasNewFolder: false,
               currentPath: payload.path,
             });
             return storageService
@@ -170,7 +172,7 @@ export const StorageStore = signalStore(
             patchState(store, { isLoading: true, hasNewFile: false });
             return storageService.uploadFile(payload).pipe(
               tapResponse({
-                next: (res) => {
+                next: () => {
                   messageService.add({
                     severity: 'success',
                     summary: 'Success',
@@ -219,7 +221,7 @@ export const StorageStore = signalStore(
             patchState(store, { isLoading: true });
             return storageService.createFolder(folderName).pipe(
               tapResponse({
-                next: (res) => {
+                next: () => {
                   patchState(store, { hasNewFolder: true });
                   messageService.add({
                     severity: 'success',
@@ -242,7 +244,7 @@ export const StorageStore = signalStore(
             patchState(store, { isLoading: true, hasFileRemoved: false });
             return storageService.removeFile(payload).pipe(
               tapResponse({
-                next: (res) => {
+                next: () => {
                   patchState(store, { hasFileRemoved: true });
                   messageService.add({
                     severity: 'success',
@@ -265,7 +267,7 @@ export const StorageStore = signalStore(
             patchState(store, { isLoading: true, hasFileProtected: false });
             return storageService.setFolderProtection(payload).pipe(
               tapResponse({
-                next: (res) => {
+                next: () => {
                   patchState(store, { hasFileProtected: true });
                   messageService.add({
                     severity: 'success',
@@ -288,12 +290,30 @@ export const StorageStore = signalStore(
             patchState(store, { isLoading: true });
             return storageService.checkFolderProtection(payload).pipe(
               tapResponse({
-                next: (res) => {
+                next: () => {
                   messageService.add({
                     severity: 'success',
                     summary: 'Success',
                     detail: 'Folder protected successfully',
                   });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      searchFile: rxMethod<SearchRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true });
+            return storageService.searchFile(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, { searchResults: res.response });
                 },
                 error: (err) => {
                   console.log(err);

@@ -8,6 +8,7 @@ import {
   DownloadFileRequest,
   FolderProtectionRequest,
   RemoveFileRequest,
+  SearchRequest,
   StorageStatus,
   UploadFileRequest,
 } from '@app/shared/model';
@@ -100,5 +101,9 @@ export class StorageService {
       '/storage/check_secure_folder_status',
       payload
     );
+  }
+
+  public searchFile(payload: SearchRequest): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>('/storage/search_file', payload);
   }
 }

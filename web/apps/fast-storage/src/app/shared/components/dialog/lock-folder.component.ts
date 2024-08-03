@@ -35,7 +35,7 @@ import { FolderProtectionRequest } from '@app/shared/model';
         (click)="closeNewFolderDialog()"
       />
       <p-button
-        label="Save"
+        [label]="config.data.unlockFolder ? 'Unlock' : 'Lock'"
         (click)="submit()"
         [disabled]="!password"
         [loading]="storageStore.isLoading()"
@@ -48,7 +48,7 @@ export class LockFolderComponent implements OnInit {
   public storageStore = inject(StorageStore);
 
   private ref = inject(DynamicDialogRef);
-  private config = inject(DynamicDialogConfig);
+  public config = inject(DynamicDialogConfig);
 
   public password = '';
 
