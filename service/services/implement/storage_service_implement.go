@@ -2171,6 +2171,7 @@ func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
 }
 
 func (h StorageHandler) SearchFile(c *gin.Context) {
+	searchFileResultToReturnToClient := make([]string, 0)
 	ctx, isSuccess := utils.PrepareContext(c)
 	if !isSuccess {
 		return
@@ -2179,6 +2180,17 @@ func (h StorageHandler) SearchFile(c *gin.Context) {
 	requestPayload := payload.SearchFileRequestBody{}
 	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
 	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if requestPayload.Request.SearchingContent == "" {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				searchFileResultToReturnToClient,
+			),
+		)
 		return
 	}
 	systemRootFolder := log.GetSystemRootFolder()
@@ -2206,7 +2218,6 @@ func (h StorageHandler) SearchFile(c *gin.Context) {
 		)
 	} else {
 		currentUserId, _ := utils.GetCurrentUserId(c)
-		searchFileResultToReturnToClient := make([]string, 0)
 		for _, currentLine := range searchFileResult {
 			splitCurrentLineByUserId := strings.Split(currentLine, *currentUserId)
 			if len(splitCurrentLineByUserId) < 2 {

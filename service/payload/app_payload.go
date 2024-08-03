@@ -1,7 +1,7 @@
 package payload
 
 type SearchFileRequestBodyValue struct {
-	SearchingContent string `json:"searchingContent" binding:"required"`
+	SearchingContent string `json:"searchingContent"`
 }
 
 type SearchFileRequestBody struct {
