@@ -493,8 +493,8 @@ func (h StorageHandler) RenameFileOrFolder(c *gin.Context) {
 		)
 		return
 	}
-	oldFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName)
-	newFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName)
+	oldFolderName := strings.TrimSuffix(handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName), "/")
+	newFolderName := strings.TrimSuffix(handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName), "/")
 
 	// if the folder user want to be rename is a secure folder, prevent this behavior
 
