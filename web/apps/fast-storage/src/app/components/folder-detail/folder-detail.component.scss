@@ -2,9 +2,12 @@
   .folder-detail {
     .p-speeddial-quarter-circle {
       &.p-speeddial-direction-up-left {
-          right: 20px;
-          bottom: 30px;
+        right: 20px;
+        bottom: 30px;
       }
+    }
+    .p-datatable-wrapper {
+      height: 100%;
     }
   }
 }

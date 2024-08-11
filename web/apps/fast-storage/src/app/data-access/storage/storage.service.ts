@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
@@ -8,6 +9,7 @@ import {
   DownloadFileRequest,
   FolderProtectionRequest,
   RemoveFileRequest,
+  RenameRequest,
   SearchRequest,
   StorageStatus,
   UploadFileRequest,
@@ -105,5 +107,12 @@ export class StorageService {
 
   public searchFile(payload: SearchRequest): Observable<CommonResponse<any>> {
     return this.http.post<CommonResponse<any>>('/storage/search_file', payload);
+  }
+
+  public rename(payload: RenameRequest): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>(
+      '/storage/rename_file_or_folder',
+      payload
+    );
   }
 }

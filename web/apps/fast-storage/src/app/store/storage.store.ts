@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { StorageService } from '@app/data-access';
 import {
@@ -10,6 +11,7 @@ import {
   DownloadFileRequest,
   FolderProtectionRequest,
   RemoveFileRequest,
+  RenameRequest,
   SearchRequest,
   StorageStatus,
   UploadFileRequest,
@@ -40,6 +42,7 @@ type StorageState = {
   currentPath: string;
   folderRequirePassword: boolean;
   searchResults: string[];
+  hasFileRenamed: boolean;
 };
 
 const initialState: StorageState = {
@@ -56,6 +59,7 @@ const initialState: StorageState = {
   currentPath: '',
   folderRequirePassword: false,
   searchResults: [],
+  hasFileRenamed: false,
 };
 
 export const StorageStore = signalStore(
@@ -155,7 +159,7 @@ export const StorageStore = signalStore(
                       patchState(store, { detailFolder: res.response });
                     }
                   },
-                  error: (err: any) => {
+                  error: (err: HttpErrorResponse) => {
                     if (err.error.errorCode === 1018) {
                       patchState(store, { folderRequirePassword: true });
                     }
@@ -319,6 +323,32 @@ export const StorageStore = signalStore(
                   console.log(err);
                 },
                 finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      renameFileOrFolder: rxMethod<RenameRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true, hasFileRenamed: false });
+            return storageService.rename(payload).pipe(
+              tapResponse({
+                next: () => {
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'File/Folder renamed successfully',
+                  });
+                  patchState(store, { hasFileRenamed: true });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () =>
+                  patchState(store, {
+                    isLoading: false,
+                  }),
               })
             );
           })

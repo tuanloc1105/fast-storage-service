@@ -63,3 +63,10 @@ export interface SearchRequest {
     searchingContent: string;
   };
 }
+
+export interface RenameRequest {
+  request: {
+    oldFolderLocationName: string;
+    newFolderLocationName: string;
+  };
+}

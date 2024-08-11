@@ -3,6 +3,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  QueryList,
+  ViewChildren,
   effect,
   inject,
 } from '@angular/core';
@@ -36,6 +38,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
+import { Inplace, InplaceModule } from 'primeng/inplace';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
@@ -56,6 +59,7 @@ import { lastValueFrom } from 'rxjs';
     InputTextModule,
     NgIconComponent,
     TooltipModule,
+    InplaceModule,
   ],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
@@ -72,11 +76,14 @@ export class FolderDetailComponent implements OnInit {
   private readonly messageService = inject(MessageService);
 
   public home: MenuItem | undefined;
-  public selectedDirectory: Directory | null = null;
+  public selectedDirectory: { directory: Directory; rowIndex: number } | null =
+    null;
   public checkedDirectories: Directory[] = [];
 
   public tableContextMenu: MenuItem[] = [];
   public speedDialItems: MenuItem[] = [];
+
+  @ViewChildren(Inplace) inplaces!: QueryList<Inplace>;
 
   constructor() {
     effect(
@@ -84,7 +91,8 @@ export class FolderDetailComponent implements OnInit {
         if (
           this.storageStore.hasNewFolder() ||
           this.storageStore.hasNewFile() ||
-          this.storageStore.hasFileRemoved()
+          this.storageStore.hasFileRemoved() ||
+          this.storageStore.hasFileRenamed()
         ) {
           this.storageStore.getDetailsDirectory({
             path: this.storageStore.currentPath(),
@@ -97,7 +105,14 @@ export class FolderDetailComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.home = { icon: 'pi pi-home' };
+    this.home = {
+      icon: 'pi pi-home',
+      command: () =>
+        this.storageStore.getDetailsDirectory({
+          path: '',
+          type: 'detailFolder',
+        }),
+    };
     this.speedDialItems = [
       {
         icon: 'pi pi-refresh',
@@ -119,9 +134,22 @@ export class FolderDetailComponent implements OnInit {
 
     this.tableContextMenu = [
       {
+        label: 'Change name',
+        icon: 'pi pi-fw pi-eraser',
+        command: () => {
+          this.inplaces.forEach((inplace) => inplace.deactivate());
+          this.inplaces
+            .toArray()
+            [this.selectedDirectory?.rowIndex ?? 0].activate();
+        },
+      },
+      {
         label: 'Download',
         icon: 'pi pi-fw pi-download',
-        command: () => this.downloadFile(this.selectedDirectory),
+        command: () =>
+          this.downloadFile(
+            this.selectedDirectory && this.selectedDirectory?.directory
+          ),
       },
       {
         label: 'Delete',
@@ -129,6 +157,8 @@ export class FolderDetailComponent implements OnInit {
         command: (e) => this.removeFile(e),
       },
     ];
+
+    this.storageStore.getDetailsDirectory({ path: '', type: 'detailFolder' });
   }
 
   public handleBreadcrumb(event: BreadcrumbItemClickEvent): void {
@@ -141,25 +171,42 @@ export class FolderDetailComponent implements OnInit {
     });
   }
 
+  public confirmChangeName(newName: string, element: Inplace) {
+    element.deactivate();
+    const oldFolderLocationName =
+      this.storageStore.currentPath() + this.selectedDirectory?.directory.name;
+    const newFolderLocationName = this.storageStore.currentPath() + newName;
+
+    this.storageStore.renameFileOrFolder({
+      request: {
+        oldFolderLocationName,
+        newFolderLocationName,
+      },
+    });
+  }
+
   public retrieveDirectory(directory: Directory): void {
     if (directory.type === 'folder') {
       const newPath = this.storageStore.currentPath() + '/' + directory.name;
       patchState(this.storageStore, {
         currentPath: newPath,
-        breadcrumb: newPath.split('/').map((p) => ({
-          label: p,
-          command: () => {
-            const nextPath = newPath
-              .split('/')
-              .slice(0, newPath.split('/').indexOf(p) + 1)
-              .join('/');
-            this.storageStore.getDetailsDirectory({
-              path: nextPath,
-              type: 'detailFolder',
-            });
-          },
-          styleClass: 'cursor-pointer',
-        })),
+        breadcrumb: newPath
+          .split('/')
+          .filter((path) => path)
+          .map((p) => ({
+            label: p,
+            command: () => {
+              const nextPath = newPath
+                .split('/')
+                .slice(0, newPath.split('/').indexOf(p) + 1)
+                .join('/');
+              this.storageStore.getDetailsDirectory({
+                path: nextPath,
+                type: 'detailFolder',
+              });
+            },
+            styleClass: 'cursor-pointer',
+          })),
       });
       this.storageStore.getDetailsDirectory({
         path: newPath,
@@ -226,7 +273,7 @@ export class FolderDetailComponent implements OnInit {
       dismissableMask: true,
     });
 
-    dialogRef.onClose.subscribe((res) => {
+    dialogRef.onClose.subscribe(() => {
       patchState(this.storageStore, {
         searchResults: [],
       });
@@ -293,7 +340,7 @@ export class FolderDetailComponent implements OnInit {
       accept: () => {
         this.storageStore.removeFile({
           request: {
-            fileNameToRemove: this.selectedDirectory?.name ?? '',
+            fileNameToRemove: this.selectedDirectory?.directory.name ?? '',
             locationToRemove: this.storageStore.currentPath(),
           },
         });
