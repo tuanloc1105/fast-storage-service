@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Example usage: ./front-end-service-automation-deploy.sh "tuanloc/fast-storage-service-web" "ae403" "0.tcp.ap.ngrok.io" "17742" "/home/ae403/fs-web"
+# Example usage: ./back-end-service-automation-deploy.sh "tuanloc/fast-storage-service" "fast-storage-backend" "fs-service" "3" "ae403" "0.tcp.ap.ngrok.io" "17742" "/home/ae403/fs-service"
 
 handle_error() {
     echo -e "\n\n >> An error occurred on line $1 \n\n"
@@ -84,26 +84,14 @@ final_image_name="$images_name:$images_tag"
 
 clear
 print_message "Deloying new version of service with images tag: ${images_tag}"
-cd ./web
+cd ./schedule
 
-print_message_and_run_input_command "Remove node modules" "rm -rf ./node_modules"
-print_message_and_run_input_command "Remove built app" "rm -rf ./app-run"
-print_message_and_run_input_command "Remove nx cache" "rm -rf ./.nx"
-print_message_and_run_input_command "Remove angular cache" "rm -rf ./.angular"
-
-print_message_and_run_input_command "Install dependencies" "pnpm install"
-print_message_and_run_input_command "Build web" "npm run build:angular"
-
-print_message_and_run_input_command "Rename built folder" "mv ./dist/ ./app-run/"
-
-print_message_and_run_input_command "Change docker compose image name" "sed -i \"s|the_name_of_image|$final_image_name|\" docker-compose.yml"
+print_message_and_run_input_command "Change docker compose image name" "sed -i \"s|image_name_of_encrypt_folder_sheduler|$final_image_name|\" docker-compose.yaml"
 
 print_message "Uploading necessary file to target host $ssh_host"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "mkdir -p ${target_dir}"
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./app-run/ $ssh_user@$ssh_host:$target_dir
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./nginx.conf $ssh_user@$ssh_host:$target_dir
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./docker-compose.yml $ssh_user@$ssh_host:$target_dir
-scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./Dockerfile.copy_from_locally_built_app $ssh_user@$ssh_host:$target_dir
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r ./encrypt-folder/ $ssh_user@$ssh_host:$target_dir
+scp -P $ssh_port -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ./docker-compose.yaml $ssh_user@$ssh_host:$target_dir
 
 down="docker compose down"
 print_message_and_command_with_out_execute "Down running docker service" "$down"
@@ -113,18 +101,13 @@ rmi="docker rmi $final_image_name"
 print_message_and_command_with_out_execute "Remove built image" "$rmi"
 try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; echo ${rmi} > rmi.txt ; eval ${rmi}\""
 
-build="docker buildx build -f ./Dockerfile.copy_from_locally_built_app -t $final_image_name ."
+build="docker buildx build -f ./encrypt-folder/Dockerfile -t $final_image_name ./encrypt-folder"
 print_message_and_command_with_out_execute "Build image" "$build"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; echo ${build} > build.txt ; eval ${build}"
 
 up="docker compose up -d"
 print_message_and_command_with_out_execute "Start docker service" "$up"
 ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port "cd ${target_dir} ; source ~/.bash_profile ; echo ${up} > up.txt ; eval ${up}"
-
-print_message_and_run_input_command "Remove node modules" "rm -rf ./node_modules"
-print_message_and_run_input_command "Remove built app" "rm -rf ./app-run"
-print_message_and_run_input_command "Remove nx cache" "rm -rf ./.nx"
-print_message_and_run_input_command "Remove angular cache" "rm -rf ./.angular"
 
 print_message_and_run_input_command "Restore file changed" "git reset . ; git restore ."
 cd ..

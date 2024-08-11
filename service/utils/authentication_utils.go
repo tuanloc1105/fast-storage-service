@@ -153,7 +153,7 @@ func GetCurrentUserId(c *gin.Context) (userId *string, err error) {
 		return &emptyString, errors.New("can not get current id")
 	}
 
-	claim := currentUser.(TokenInformation)
+	claim, _ := currentUser.(TokenInformation)
 
 	currentUserId := claim.Sub
 

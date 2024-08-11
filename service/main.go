@@ -9,6 +9,7 @@ import (
 	"fast-storage-go-service/log"
 	"fast-storage-go-service/payload"
 	"fast-storage-go-service/utils"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -100,9 +101,9 @@ func main() {
 	)
 
 	go func() {
-		gitStartUpError := router.Run(":" + applicationPort)
-		if gitStartUpError != nil {
-			log.WithLevel(constant.Error, ctx, "Error when running server: %v", gitStartUpError)
+		ginStartUpError := router.Run(":" + applicationPort)
+		if ginStartUpError != nil {
+			log.WithLevel(constant.Error, ctx, "Error when running server: %v", ginStartUpError)
 			os.Exit(1)
 		}
 	}()
@@ -112,11 +113,11 @@ func main() {
 		ctx,
 		"Application started on port: "+applicationPort,
 	)
-
+	var applicationOsSignal os.Signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	applicationOsSignal = <-quit
 
-	log.WithLevel(constant.Info, ctx, "Shutting down the server")
+	log.WithLevel(constant.Info, ctx, fmt.Sprintln("Shutting down the server with signal", applicationOsSignal.String()))
 
 }

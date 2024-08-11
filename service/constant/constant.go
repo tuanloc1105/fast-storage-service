@@ -29,6 +29,7 @@ const EmptyString = ""
 const FileCryptoSecretKeyPath = "additional_source_code/secret.key"
 const PythonEncryptFileCommand = "python3.12 additional_source_code/python_encrypt.py '%s' '%s'"
 const PythonDecryptFileCommand = "python3.12 additional_source_code/python_decrypt.py '%s' '%s'"
+const PythonListAllFileCommand = "python3.12 additional_source_code/python_walk_through_every_file.py '%s'"
 const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
 	ContentTypeBinary    = "application/octet-stream"
@@ -52,7 +53,7 @@ type LogKey string
 const UsernameLogKey LogKey = "username"
 const UserIdLogKey LogKey = "userId"
 const TraceIdLogKey LogKey = "traceId"
-const LogPattern = "[%s] [%s] [%s] 👉️ \t%s"
+const LogPattern = "[%s] [%s] [%s] >>>>>>> \t%s"
 
 var (
 	Success = ErrorEnums{
@@ -135,9 +136,9 @@ var (
 		ErrorCode:    1010,
 		ErrorMessage: "Check maximun storage error",
 	}
-	UploadFileSizeExceeds = ErrorEnums{
+	UploadFileError = ErrorEnums{
 		ErrorCode:    1011,
-		ErrorMessage: "Upload file size exceeds the limit",
+		ErrorMessage: "Upload file error",
 	}
 	RemoveFileError = ErrorEnums{
 		ErrorCode:    1012,

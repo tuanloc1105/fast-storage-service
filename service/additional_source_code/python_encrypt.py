@@ -1,5 +1,6 @@
 import os
 import sys
+
 from cryptography.fernet import Fernet, InvalidToken
 
 
@@ -38,11 +39,11 @@ def is_file_encrypted(file_path, key):
 
 
 def encrypt_file(secret_key_directory, file_name):
+    if file_name.endswith(".log"):
+        return
     key = load_key(secret_key_directory)
     if is_file_encrypted(file_name, key):
         print("this file was encrypted")
-        sys.exit(1)
-    if file_name.endswith(".log"):
         return
     fernet = Fernet(key)
 
@@ -51,7 +52,7 @@ def encrypt_file(secret_key_directory, file_name):
         file_data = file.read()
 
     # encrypt data
-    header = b"ENCRYPTED"
+    header = b"FAST_STORAGE_SERVICE_CRYPTO"
     data_to_encrypt = header + file_data
     encrypted_data = fernet.encrypt(data_to_encrypt)
 

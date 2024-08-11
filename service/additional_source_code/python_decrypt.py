@@ -1,5 +1,6 @@
 import os
 import sys
+
 from cryptography.fernet import Fernet, InvalidToken
 
 
@@ -28,7 +29,7 @@ def is_file_encrypted(file_path, key):
         decrypted_data = fernet.decrypt(encrypted_data)
 
         # Check for the unique header
-        header = b"ENCRYPTED"
+        header = b"FAST_STORAGE_SERVICE_CRYPTO"
         if decrypted_data.startswith(header):
             return True
         else:
@@ -38,11 +39,11 @@ def is_file_encrypted(file_path, key):
 
 
 def decrypt_file(secret_key_directory, file_name):
+    if file_name.endswith(".log"):
+        return
     key = load_key(secret_key_directory)
     if not is_file_encrypted(file_name, key):
         print("this file was not encrypted")
-        sys.exit(1)
-    if file_name.endswith(".log"):
         return
     fernet = Fernet(key)
 
@@ -54,11 +55,13 @@ def decrypt_file(secret_key_directory, file_name):
     decrypted_data = fernet.decrypt(encrypted_data)
     header = b"FAST_STORAGE_SERVICE_CRYPTO"
     if decrypted_data.startswith(header):
-        original_data = decrypted_data[len(header) :]
+        original_data = decrypted_data[len(header):]
 
         # Write the decrypted original data back to the file
         with open(file_name, "wb") as file:
             file.write(original_data)
+    else:
+        print("wrong encrypt format")
 
 
 if __name__ == "__main__":

@@ -86,6 +86,11 @@ func Shellout(ctx context.Context, command string, isLog ...bool) (string, strin
 		} else {
 			finalStdoutString = stdoutString
 		}
+		if len(finalStdoutString) > 2000 {
+			startingString := finalStdoutString[0:50]
+			endingString := finalStdoutString[(len(finalStdoutString) - 50):]
+			finalStdoutString = fmt.Sprintf("%s...%s", startingString, endingString)
+		}
 		log.WithLevel(
 			constant.Info,
 			ctx,

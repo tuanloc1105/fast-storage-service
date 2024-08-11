@@ -1,0 +1,9 @@
+services:
+  
+  encrypt-folder-sheduler:
+    container_name: encrypt-folder-sheduler
+    restart: on-failure
+    image: image_name_of_encrypt_folder_sheduler
+    environment:
+      - ENCRYPT_FOLDER_API_URL=http://192.168.1.22:6060/fast_storage/api/v1/storage/crypto_every_folder
+      - ENCRYPT_FOLDER_API_KEY=DnX521Wks684SoF097rAP925TjU555Dp

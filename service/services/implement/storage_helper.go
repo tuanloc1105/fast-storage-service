@@ -91,7 +91,7 @@ func handleCheckUserMaximumStorageWhenUploading(ctx context.Context, db *gorm.DB
 			checkFolderSizeCommand := fmt.Sprintf("du -s %s", folderToCheckSize)
 			checkFolderSizeStdOut, _, checkFolderSizeError := utils.Shellout(ctx, checkFolderSizeCommand)
 			if checkFolderSizeError != nil {
-				return 0, 0, checkFolderSizeError
+				return 0, 0, errors.New("cannot check user folder size")
 			}
 			folderSizeInt64, convertFolderSizeToInt64Error := strconv.
 				ParseInt(

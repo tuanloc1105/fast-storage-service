@@ -79,7 +79,7 @@ func (h StorageHandler) SystemStorageStatus(c *gin.Context) {
 				c,
 				constant.InternalFailure,
 				nil,
-				"not enought information",
+				"not enough information",
 			),
 		)
 		return
@@ -111,7 +111,7 @@ func (h StorageHandler) UserStorageStatus(c *gin.Context) {
 	h.Ctx = ctx
 	systemRootFolder := log.GetSystemRootFolder()
 
-	if maximunStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
+	if maximumStorageSize, currentStorageSize, checkStorageSizeError := handleCheckUserMaximumStorageWhenUploading(h.Ctx, h.DB, systemRootFolder, 0); checkStorageSizeError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
@@ -123,7 +123,7 @@ func (h StorageHandler) UserStorageStatus(c *gin.Context) {
 		return
 	} else {
 		result := payload.UserStorageStatus{
-			MaximunSize: maximunStorageSize,
+			MaximunSize: maximumStorageSize,
 			Used:        currentStorageSize,
 		}
 
@@ -493,8 +493,8 @@ func (h StorageHandler) RenameFileOrFolder(c *gin.Context) {
 		)
 		return
 	}
-	oldFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName)
-	newFolderName := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName)
+	oldFolderName := strings.TrimSuffix(handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.OldFolderLocationName), "/")
+	newFolderName := strings.TrimSuffix(handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.NewFolderLocationName), "/")
 
 	// if the folder user want to be rename is a secure folder, prevent this behavior
 
@@ -664,14 +664,14 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
-	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+	if checkMaximumStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximumStorageError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.CheckMaximunStorageError,
 				nil,
-				checkMaximunStorageError.Error(),
+				checkMaximumStorageError.Error(),
 			),
 		)
 		return
@@ -763,7 +763,7 @@ func (h StorageHandler) UploadFile(c *gin.Context) {
 				http.StatusInternalServerError,
 				utils.ReturnResponse(
 					c,
-					constant.UploadFileSizeExceeds,
+					constant.UploadFileError,
 					nil,
 					checkUploadingFileSize.Error(),
 				),
@@ -2097,7 +2097,7 @@ func (h StorageHandler) DownloadMultipleFile(c *gin.Context) {
 }
 
 func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
-	ctx, isSuccess := utils.PrepareContext(c)
+	ctx, isSuccess := utils.PrepareContext(c, true)
 	if !isSuccess {
 		return
 	}
@@ -2116,7 +2116,7 @@ func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
 	}
 	if apiKey == "" || strings.Compare(apiKey, encryptFolderApiKey) != 0 {
 		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
+			http.StatusForbidden,
 			utils.ReturnResponse(
 				c,
 				constant.Forbidden,
@@ -2168,4 +2168,71 @@ func (h StorageHandler) CryptoEveryFolder(c *gin.Context) {
 			nil,
 		),
 	)
+}
+
+func (h StorageHandler) SearchFile(c *gin.Context) {
+	searchFileResultToReturnToClient := make([]string, 0)
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.SearchFileRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+	if requestPayload.Request.SearchingContent == "" {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				searchFileResultToReturnToClient,
+			),
+		)
+		return
+	}
+	systemRootFolder := log.GetSystemRootFolder()
+	userRootFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, "")
+	if requestPayload.Request.SearchingContent == "" {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"searching content cannot be empty",
+			),
+		)
+	}
+	if searchFileResult, searchFileError := utils.ListAndFindFileInDirectory(h.Ctx, userRootFolder, requestPayload.Request.SearchingContent); searchFileError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"searching content cannot be empty",
+			),
+		)
+	} else {
+		currentUserId, _ := utils.GetCurrentUserId(c)
+		for _, currentLine := range searchFileResult {
+			splitCurrentLineByUserId := strings.Split(currentLine, *currentUserId)
+			if len(splitCurrentLineByUserId) < 2 {
+				continue
+			} else {
+				searchFileResultToReturnToClient = append(searchFileResultToReturnToClient, splitCurrentLineByUserId[1][1:])
+			}
+		}
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				searchFileResultToReturnToClient,
+			),
+		)
+	}
 }
