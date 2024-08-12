@@ -18,11 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	KeycloakGrantType = "password"
-	KeycloakScope     = "openid"
-)
-
 type AuthenticateHandler struct {
 	DB  *gorm.DB
 	Ctx context.Context
