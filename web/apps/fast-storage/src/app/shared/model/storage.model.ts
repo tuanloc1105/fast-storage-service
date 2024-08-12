@@ -70,3 +70,8 @@ export interface RenameRequest {
     newFolderLocationName: string;
   };
 }
+
+export interface ReadFileRequest {
+  fileNameToRead: string;
+  locationToRead: string;
+}

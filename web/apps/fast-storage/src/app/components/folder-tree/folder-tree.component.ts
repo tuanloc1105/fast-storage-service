@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NewFolderComponent } from '@app/shared/components';
+import { AppearDirective } from '@app/shared/directives';
 import { Directory } from '@app/shared/model';
 import { genBreadcrumb, getFullPath } from '@app/shared/utils';
 import { AppStore, StorageStore } from '@app/store';
@@ -40,6 +41,7 @@ import {
     InputTextModule,
     FormsModule,
     DynamicDialogModule,
+    AppearDirective,
   ],
   templateUrl: './folder-tree.component.html',
   styleUrl: './folder-tree.component.scss',

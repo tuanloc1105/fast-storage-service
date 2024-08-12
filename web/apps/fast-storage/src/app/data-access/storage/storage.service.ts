@@ -8,6 +8,7 @@ import {
   DirectoryRequest,
   DownloadFileRequest,
   FolderProtectionRequest,
+  ReadFileRequest,
   RemoveFileRequest,
   RenameRequest,
   SearchRequest,
@@ -113,6 +114,21 @@ export class StorageService {
     return this.http.post<CommonResponse<any>>(
       '/storage/rename_file_or_folder',
       payload
+    );
+  }
+
+  public readFileContent(
+    payload: ReadFileRequest
+  ): Observable<CommonResponse<any>> {
+    const { fileNameToRead, locationToRead } = payload;
+    return this.http.get<CommonResponse<any>>(
+      '/storage/read_text_file_content',
+      {
+        params: {
+          fileNameToRead,
+          locationToRead,
+        },
+      }
     );
   }
 }
