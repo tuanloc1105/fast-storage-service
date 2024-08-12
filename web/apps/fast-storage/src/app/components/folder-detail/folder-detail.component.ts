@@ -40,6 +40,7 @@ import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { Inplace, InplaceModule } from 'primeng/inplace';
 import { lastValueFrom } from 'rxjs';
+import { AppearDirective } from '@app/shared/directives';
 
 @Component({
   selector: 'app-folder-detail',
@@ -60,6 +61,7 @@ import { lastValueFrom } from 'rxjs';
     NgIconComponent,
     TooltipModule,
     InplaceModule,
+    AppearDirective,
   ],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
@@ -211,6 +213,11 @@ export class FolderDetailComponent implements OnInit {
       this.storageStore.getDetailsDirectory({
         path: newPath,
         type: 'detailFolder',
+      });
+    } else {
+      this.storageStore.readFileContent({
+        fileNameToRead: directory.name,
+        locationToRead: this.storageStore.currentPath(),
       });
     }
   }

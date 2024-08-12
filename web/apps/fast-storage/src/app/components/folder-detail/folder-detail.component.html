@@ -99,7 +99,7 @@
             <p-tableCheckbox [value]="directory" />
           </td>
           <td>
-            <div class="flex items-center">
+            <div class="flex items-center" appAppear>
               <img
                 [alt]="directory.name"
                 [src]="
@@ -124,7 +124,7 @@
                       [value]="directory.name"
                       pInputText
                       #input
-                      class="p-[6px]"
+                      class="pl-3 py-1"
                     />
                     <div
                       class="absolute flex gap-1 items-center right-0 -bottom-9"

@@ -10,6 +10,7 @@ import {
   Directory,
   DownloadFileRequest,
   FolderProtectionRequest,
+  ReadFileRequest,
   RemoveFileRequest,
   RenameRequest,
   SearchRequest,
@@ -43,6 +44,7 @@ type StorageState = {
   folderRequirePassword: boolean;
   searchResults: string[];
   hasFileRenamed: boolean;
+  fileContent: string;
 };
 
 const initialState: StorageState = {
@@ -60,6 +62,7 @@ const initialState: StorageState = {
   folderRequirePassword: false,
   searchResults: [],
   hasFileRenamed: false,
+  fileContent: '',
 };
 
 export const StorageStore = signalStore(
@@ -143,10 +146,12 @@ export const StorageStore = signalStore(
       }>(
         pipe(
           switchMap((payload) => {
-            patchState(store, {
-              isLoading: true,
-              currentPath: payload.path,
-            });
+            if (payload.type === 'detailFolder') {
+              patchState(store, {
+                isLoading: true,
+                currentPath: payload.path,
+              });
+            }
             return storageService
               .getDirectory(payload.path, payload.credential)
               .pipe(
@@ -349,6 +354,24 @@ export const StorageStore = signalStore(
                   patchState(store, {
                     isLoading: false,
                   }),
+              })
+            );
+          })
+        )
+      ),
+      readFileContent: rxMethod<ReadFileRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true, fileContent: '' });
+            return storageService.readFileContent(payload).pipe(
+              tapResponse({
+                next: (res) => {
+                  patchState(store, { fileContent: res.response });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
               })
             );
           })
