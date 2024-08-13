@@ -1601,7 +1601,7 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 	}
 
 	if strings.Contains(checkIfFileIsTextStdout, "text") {
-		catFileContentCommand := "cat " + fileNameToReadFromRequest
+		catFileContentCommand := "cat '" + fileNameToReadFromRequest + "'"
 		catFileContentStdout, _, catFileContentError := utils.ShelloutAtSpecificDirectory(h.Ctx, catFileContentCommand, folderToView)
 		if catFileContentError != nil {
 			c.AbortWithStatusJSON(
@@ -1750,7 +1750,7 @@ func (h StorageHandler) EditTextFileContent(c *gin.Context) {
 	contentToEdit := string(rawData)
 
 	editFileCommand := fmt.Sprintf(
-		`cat <<EOF > %s
+		`cat <<EOF > '%s'
 %s
 EOF`,
 		fileNameToEditFromRequest,
