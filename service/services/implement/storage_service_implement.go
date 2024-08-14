@@ -1544,7 +1544,7 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 	credential := c.Query("credential")
 	fileNameToReadFromRequest := c.Query("fileNameToRead")
 
-	if folderLocation == "" || fileNameToReadFromRequest == "" {
+	if fileNameToReadFromRequest == "" {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(
@@ -1572,6 +1572,31 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 		return
 	}
 
+	if _, directoryStatusError := os.Stat(folderToView); os.IsNotExist(directoryStatusError) {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+			),
+		)
+		return
+	}
+
+	if decryptionError := utils.FileDecryption(h.Ctx, filepath.Join(folderToView, fileNameToReadFromRequest)); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				fileNameToReadFromRequest+" has an error while get content to view.",
+			),
+		)
+		return
+	}
+
 	checkIfFileIsTextFileCommand := "file '" + fileNameToReadFromRequest + "'"
 	checkIfFileIsTextStdout, _, checkIfFileIsTextError := utils.ShelloutAtSpecificDirectory(h.Ctx, checkIfFileIsTextFileCommand, folderToView)
 	if checkIfFileIsTextError != nil {
@@ -1588,7 +1613,7 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 	}
 
 	if strings.Contains(checkIfFileIsTextStdout, "text") {
-		catFileContentCommand := "cat " + fileNameToReadFromRequest
+		catFileContentCommand := "cat '" + fileNameToReadFromRequest + "'"
 		catFileContentStdout, _, catFileContentError := utils.ShelloutAtSpecificDirectory(h.Ctx, catFileContentCommand, folderToView)
 		if catFileContentError != nil {
 			c.AbortWithStatusJSON(
@@ -1624,6 +1649,18 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 			http.StatusOK,
 			constant.ContentTypeText,
 			[]byte(``),
+		)
+	}
+	if encryptionError := utils.FileEncryption(h.Ctx, filepath.Join(folderToView, fileNameToReadFromRequest)); encryptionError != nil {
+		log.WithLevel(
+			constant.Error,
+			h.Ctx,
+			fmt.Sprintln(
+				"cannot ecrypt file",
+				filepath.Join(folderToView, fileNameToReadFromRequest),
+				". starting to remove. error: ",
+				encryptionError,
+			),
 		)
 	}
 }
@@ -1709,10 +1746,23 @@ func (h StorageHandler) EditTextFileContent(c *gin.Context) {
 		return
 	}
 
+	if decryptionError := utils.FileDecryption(h.Ctx, filepath.Join(folderToView, fileNameToEditFromRequest)); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				fileNameToEditFromRequest+" has an error while editing.",
+			),
+		)
+		return
+	}
+
 	contentToEdit := string(rawData)
 
 	editFileCommand := fmt.Sprintf(
-		`cat <<EOF > %s
+		`cat <<EOF > '%s'
 %s
 EOF`,
 		fileNameToEditFromRequest,
@@ -1740,6 +1790,18 @@ EOF`,
 			nil,
 		),
 	)
+	if encryptionError := utils.FileEncryption(h.Ctx, filepath.Join(folderToView, fileNameToEditFromRequest)); encryptionError != nil {
+		log.WithLevel(
+			constant.Error,
+			h.Ctx,
+			fmt.Sprintln(
+				"cannot ecrypt file",
+				filepath.Join(folderToView, fileNameToEditFromRequest),
+				". starting to remove. error: ",
+				encryptionError,
+			),
+		)
+	}
 }
 
 func (h StorageHandler) ShareFile(c *gin.Context) {
