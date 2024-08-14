@@ -25,6 +25,8 @@
         ],
         "styles": [
           "apps/fast-storage/src/styles.scss",
+          "apps/fast-storage/src/prism-coldark-dark.css",
+          "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.css",
           {
             "input": "apps/fast-storage/src/theme-aura-dark-cyan.scss",
             "inject": false,
@@ -36,7 +38,12 @@
             "bundleName": "aura-light-cyan"
           }
         ],
-        "scripts": []
+        "scripts": [
+          "node_modules/prismjs/prism.js",
+          "node_modules/prismjs/plugins/line-numbers/prism-line-numbers.js",
+          "node_modules/prismjs/components/prism-typescript.min.js",
+          "node_modules/clipboard/dist/clipboard.min.js"
+        ]
       },
       "configurations": {
         "production": {

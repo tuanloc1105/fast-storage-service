@@ -23,6 +23,7 @@ import {
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { DialogService } from 'primeng/dynamicdialog';
 import { provideNgIconsConfig } from '@ng-icons/core';
+import { provideMarkdown } from 'ngx-markdown';
 
 export function HttpLoaderFactory(http: HttpClient) {
   return new TranslateHttpLoader(http);
@@ -33,6 +34,7 @@ export const appConfig: ApplicationConfig = {
     MessageService,
     ConfirmationService,
     DialogService,
+    provideMarkdown(),
     provideRouter(
       appRoutes,
       withViewTransitions(),

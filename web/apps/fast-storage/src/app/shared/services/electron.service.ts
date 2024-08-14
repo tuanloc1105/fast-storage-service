@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from 'environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -11,7 +12,7 @@ export class ElectronService {
   log(message: string) {
     if (this.isElectron) {
       window.electronAPI.log(message);
-    } else {
+    } else if (!environment.production) {
       console.log(message);
     }
   }

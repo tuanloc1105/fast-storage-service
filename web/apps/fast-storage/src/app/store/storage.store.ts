@@ -366,7 +366,7 @@ export const StorageStore = signalStore(
             return storageService.readFileContent(payload).pipe(
               tapResponse({
                 next: (res) => {
-                  patchState(store, { fileContent: res.response });
+                  patchState(store, { fileContent: res });
                 },
                 error: (err) => {
                   console.log(err);

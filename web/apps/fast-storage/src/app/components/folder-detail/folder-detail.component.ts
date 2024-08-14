@@ -9,6 +9,7 @@ import {
   inject,
 } from '@angular/core';
 import {
+  FileContentComponent,
   LockFolderComponent,
   NewFolderComponent,
   SearchComponent,
@@ -99,6 +100,23 @@ export class FolderDetailComponent implements OnInit {
           this.storageStore.getDetailsDirectory({
             path: this.storageStore.currentPath(),
             type: 'detailFolder',
+          });
+        }
+
+        if (this.storageStore.fileContent()) {
+          const ref = this.dialogService.open(FileContentComponent, {
+            header: this.selectedDirectory?.directory.name,
+            data: {
+              content: this.storageStore.fileContent(),
+            },
+            resizable: true,
+            width: '50vw',
+          });
+
+          ref.onClose.subscribe(() => {
+            patchState(this.storageStore, {
+              fileContent: '',
+            });
           });
         }
       },
@@ -215,6 +233,7 @@ export class FolderDetailComponent implements OnInit {
         type: 'detailFolder',
       });
     } else {
+      this.selectedDirectory = { directory, rowIndex: 0 };
       this.storageStore.readFileContent({
         fileNameToRead: directory.name,
         locationToRead: this.storageStore.currentPath(),
