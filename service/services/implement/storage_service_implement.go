@@ -1544,7 +1544,7 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 	credential := c.Query("credential")
 	fileNameToReadFromRequest := c.Query("fileNameToRead")
 
-	if folderLocation == "" || fileNameToReadFromRequest == "" {
+	if fileNameToReadFromRequest == "" {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(
@@ -1567,6 +1567,18 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 				constant.SecureFolderInvalidCredentialError,
 				nil,
 				checkFolderCredentialError.Error(),
+			),
+		)
+		return
+	}
+
+	if _, directoryStatusError := os.Stat(folderToView); os.IsNotExist(directoryStatusError) {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
 			),
 		)
 		return
