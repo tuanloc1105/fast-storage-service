@@ -117,18 +117,14 @@ export class StorageService {
     );
   }
 
-  public readFileContent(
-    payload: ReadFileRequest
-  ): Observable<CommonResponse<any>> {
+  public readFileContent(payload: ReadFileRequest): Observable<string> {
     const { fileNameToRead, locationToRead } = payload;
-    return this.http.get<CommonResponse<any>>(
-      '/storage/read_text_file_content',
-      {
-        params: {
-          fileNameToRead,
-          locationToRead,
-        },
-      }
-    );
+    return this.http.get('/storage/read_text_file_content', {
+      responseType: 'text',
+      params: {
+        fileNameToRead,
+        locationToRead,
+      },
+    });
   }
 }

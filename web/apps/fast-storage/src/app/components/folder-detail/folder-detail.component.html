@@ -16,6 +16,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="handleCopy()"
+        title="Copy"
       ></p-button>
       <p-button
         severity="info"
@@ -24,6 +25,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="handlePaste()"
+        title="Paste"
       ></p-button>
       <p-button
         [text]="true"
@@ -31,6 +33,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="handleRename()"
+        title="Rename"
       >
         <ng-icon name="heroPencilSquare"></ng-icon>
       </p-button>
@@ -41,6 +44,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="downloadFiles()"
+        title="Download"
       ></p-button>
       <p-button
         [text]="true"
@@ -48,6 +52,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="handleCut()"
+        title="Cut"
       >
         <ng-icon name="heroScissors"></ng-icon>
       </p-button>
@@ -58,6 +63,7 @@
         size="small"
         [disabled]="checkedDirectories.length === 0"
         (click)="deleteFiles($event)"
+        title="Delete"
       ></p-button>
     </div>
     <div class="flex items-center px-3 gap-3 rounded-md h-full">
@@ -99,7 +105,11 @@
             <p-tableCheckbox [value]="directory" />
           </td>
           <td>
-            <div class="flex items-center" appAppear>
+            <div
+              class="flex items-center"
+              appAppear
+              delay="{{ rowIndex * 20 + 'ms' }}"
+            >
               <img
                 [alt]="directory.name"
                 [src]="
@@ -111,7 +121,7 @@
                         ]
                 "
                 width="15"
-                style="vertical-align: middle"
+                class="align-middle"
               />
               <p-inplace class="ml-2" [preventClick]="true" #inplace>
                 <ng-template pTemplate="display">

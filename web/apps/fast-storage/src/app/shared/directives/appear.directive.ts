@@ -1,11 +1,17 @@
 import { animate, AnimationBuilder, style } from '@angular/animations';
-import { Directive, ElementRef, Input, OnInit, Renderer2 } from '@angular/core';
+import {
+  AfterViewInit,
+  Directive,
+  ElementRef,
+  Input,
+  Renderer2,
+} from '@angular/core';
 
 @Directive({
   selector: '[appAppear]',
   standalone: true,
 })
-export class AppearDirective implements OnInit {
+export class AppearDirective implements AfterViewInit {
   @Input() duration = '200ms';
   @Input() delay = '0ms';
   @Input() moveDistance = '10px';
@@ -16,7 +22,7 @@ export class AppearDirective implements OnInit {
     private builder: AnimationBuilder
   ) {}
 
-  ngOnInit() {
+  ngAfterViewInit() {
     // Initially set the opacity to 0
     this.renderer.setStyle(this.el.nativeElement, 'opacity', '0');
     this.renderer.setStyle(

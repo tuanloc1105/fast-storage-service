@@ -1,14 +1,14 @@
+import { DOCUMENT } from '@angular/common';
 import { Component, Inject, OnInit, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
+import { patchState } from '@ngrx/signals';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PrimeNGConfig } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
 import { lastValueFrom } from 'rxjs';
 import { LocalStorageJwtService } from './shared/services';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { DOCUMENT } from '@angular/common';
 import { AppStore } from './store';
-import { patchState } from '@ngrx/signals';
 
 @Component({
   standalone: true,
@@ -63,10 +63,7 @@ export class AppComponent implements OnInit {
     }
 
     if (accessToken) {
-      this.router.navigate([
-        'app/initializing',
-        { returnUrl: location.pathname },
-      ]);
+      this.router.navigate(['app/initializing']);
     }
   }
 }

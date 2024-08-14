@@ -1,4 +1,4 @@
-import { DOCUMENT } from '@angular/common';
+import { DOCUMENT, Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { NewFolderComponent } from '@app/shared/components';
 import { AppearDirective } from '@app/shared/directives';
 import { Directory } from '@app/shared/model';
+import { RouteParamsService } from '@app/shared/services';
 import { genBreadcrumb, getFullPath } from '@app/shared/utils';
 import { AppStore, StorageStore } from '@app/store';
 import { patchState } from '@ngrx/signals';
@@ -52,6 +53,7 @@ export class FolderTreeComponent implements OnInit {
   public storageStore = inject(StorageStore);
 
   private readonly dialogService = inject(DialogService);
+  private readonly routeParamsService = inject(RouteParamsService);
 
   public selectedDocumentFolder: TreeNode | null = null;
 
@@ -133,6 +135,7 @@ export class FolderTreeComponent implements OnInit {
         path: path.join('/'),
         type: 'detailFolder',
       });
+      this.routeParamsService.setRouteParams({ location: path.join('/') });
       genBreadcrumb(this.storageStore, path);
     }
   }
