@@ -217,4 +217,8 @@ var (
 		ErrorCode:    1029,
 		ErrorMessage: "Image can not view",
 	}
+	CopyOrCutError = ErrorEnums{
+		ErrorCode:    1030,
+		ErrorMessage: "Can not cut or copy",
+	}
 )

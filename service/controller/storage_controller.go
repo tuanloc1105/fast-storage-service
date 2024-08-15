@@ -149,4 +149,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.ReadImageFile,
 		utils.ErrorHandler)
+
+	storageRouter.POST("/cut_or_copy",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.CutOrCopy,
+		utils.ErrorHandler)
 }

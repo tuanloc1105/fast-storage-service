@@ -1,5 +1,16 @@
 package payload
 
+type CutOrCopyRequestBodyValue struct {
+	SourceFolder      string `json:"sourceFolder"`
+	DestinationFolder string `json:"destinationFolder"`
+	FileName          string `json:"fileName"`
+	IsCopy            bool   `json:"isCopy"`
+}
+
+type CutOrCopyRequestBody struct {
+	Request CutOrCopyRequestBodyValue `json:"request" binding:"required"`
+}
+
 type ReadImageFileRequestBodyValue struct {
 	FolderLocation string `json:"folderLocation"`
 	ImageFileName  string `json:"imageFileName"`

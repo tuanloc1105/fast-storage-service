@@ -2406,3 +2406,180 @@ func (h StorageHandler) ReadImageFile(c *gin.Context) {
 		)
 	}
 }
+
+func (h StorageHandler) CutOrCopy(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.CutOrCopyRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if requestPayload.Request.SourceFolder == "" && requestPayload.Request.FileName == "" {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+	if strings.Contains(requestPayload.Request.SourceFolder, "..") || strings.Contains(requestPayload.Request.DestinationFolder, "..") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	sourceFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.SourceFolder)
+	destinationFolder := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.DestinationFolder)
+
+	_, getSourceFolderInfoError := os.Stat(sourceFolder)
+	if getSourceFolderInfoError != nil && os.IsNotExist(getSourceFolderInfoError) {
+		c.AbortWithStatusJSON(
+			http.StatusNotFound,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+				requestPayload.Request.SourceFolder+" is not existed",
+			),
+		)
+		return
+	}
+	_, getDestinationFolderInfoError := os.Stat(sourceFolder)
+	if getDestinationFolderInfoError != nil && os.IsNotExist(getDestinationFolderInfoError) {
+		c.AbortWithStatusJSON(
+			http.StatusNotFound,
+			utils.ReturnResponse(
+				c,
+				constant.FolderNotExistError,
+				nil,
+				requestPayload.Request.DestinationFolder+" is not existed",
+			),
+		)
+		return
+	}
+
+	fileNameToHandle := requestPayload.Request.FileName
+
+	commandBuilder := make([]string, 0)
+
+	isCopy := requestPayload.Request.IsCopy
+
+	if isCopy {
+		commandBuilder = append(commandBuilder, "cp")
+	} else {
+		commandBuilder = append(commandBuilder, "mv")
+	}
+
+	// trường hợp nếu như filename không được truyền thì thực hiện copy folder
+	isCopyFolder := fileNameToHandle == ""
+	if isCopyFolder {
+		if isCopy {
+			commandBuilder = append(commandBuilder, "-R")
+		}
+		commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", sourceFolder))
+		commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", destinationFolder))
+	} else {
+		_, getSourceFileInfoError := os.Stat(filepath.Join(sourceFolder, fileNameToHandle))
+		if getSourceFileInfoError != nil && os.IsNotExist(getSourceFileInfoError) {
+			c.AbortWithStatusJSON(
+				http.StatusNotFound,
+				utils.ReturnResponse(
+					c,
+					constant.FolderNotExistError,
+					nil,
+					requestPayload.Request.FileName+" is not existed",
+				),
+			)
+			return
+		}
+		isCopyFileAtTheSameFolder := sourceFolder == destinationFolder
+		if isCopyFileAtTheSameFolder {
+			fileNameSplitArray := strings.Split(fileNameToHandle, ".")
+			if len(fileNameSplitArray) < 1 {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.CopyOrCutError,
+						nil,
+						"invalid file name",
+					),
+				)
+				return
+			}
+			fileNameWithoutExtension := strings.Split(fileNameToHandle, ".")[0]
+			fileExtension := ""
+			if len(fileNameSplitArray) == 2 {
+				fileExtension = strings.Split(fileNameWithoutExtension, ".")[1]
+			}
+			countFileCommand := fmt.Sprintln("ls -l | grep '", fileNameWithoutExtension, "' | wc -l")
+			if countFileStdout, countFileStderr, countFileError := utils.Shellout(h.Ctx, countFileCommand); countFileError != nil || countFileStderr != "" {
+				c.AbortWithStatusJSON(
+					http.StatusInternalServerError,
+					utils.ReturnResponse(
+						c,
+						constant.CopyOrCutError,
+						nil,
+					),
+				)
+				return
+			} else {
+				if numberOfFile, convertNumberOfFileDataTypeError := strconv.Atoi(countFileStdout); convertNumberOfFileDataTypeError != nil {
+					c.AbortWithStatusJSON(
+						http.StatusInternalServerError,
+						utils.ReturnResponse(
+							c,
+							constant.CopyOrCutError,
+							convertNumberOfFileDataTypeError,
+						),
+					)
+				} else {
+					fileId := strconv.Itoa(numberOfFile + 1)
+					commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", filepath.Join(sourceFolder, fileNameToHandle)))
+					commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", filepath.Join(destinationFolder, fmt.Sprintf("%s (%s).%s", fileNameWithoutExtension, fileId, fileExtension))))
+				}
+			}
+		} else {
+			commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", filepath.Join(sourceFolder, fileNameToHandle)))
+			commandBuilder = append(commandBuilder, fmt.Sprintf("'%s'", filepath.Join(destinationFolder, fileNameToHandle)))
+		}
+	}
+
+	finalCommand := strings.Join(commandBuilder, " ")
+	if _, commandStderr, commandError := utils.Shellout(h.Ctx, finalCommand); commandError != nil || commandStderr != "" {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.CopyOrCutError,
+				nil,
+			),
+		)
+		return
+	}
+	c.JSON(
+		http.StatusOK,
+		utils.ReturnResponse(
+			c,
+			constant.Success,
+			nil,
+		),
+	)
+}

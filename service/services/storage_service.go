@@ -22,4 +22,5 @@ type StorageService interface {
 	CryptoEveryFolder(c *gin.Context)
 	SearchFile(c *gin.Context)
 	ReadImageFile(c *gin.Context)
+	CutOrCopy(c *gin.Context)
 }
