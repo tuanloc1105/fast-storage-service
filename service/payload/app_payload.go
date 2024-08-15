@@ -1,5 +1,14 @@
 package payload
 
+type ReadImageFileRequestBodyValue struct {
+	FolderLocation string `json:"folderLocation"`
+	ImageFileName  string `json:"imageFileName"`
+}
+
+type ReadImageFileRequestBody struct {
+	Request ReadImageFileRequestBodyValue `json:"request" binding:"required"`
+}
+
 type SearchFileRequestBodyValue struct {
 	SearchingContent string `json:"searchingContent"`
 }
@@ -213,4 +222,8 @@ type FileInformation struct {
 	Type             string `json:"type"`
 	Editable         bool   `json:"editable"`
 	BirthDate        string `json:"birthDate"`
+}
+
+type ImageViewResponse struct {
+	Data string `json:"data"`
 }

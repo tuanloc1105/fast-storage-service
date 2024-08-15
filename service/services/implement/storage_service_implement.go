@@ -857,14 +857,14 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	}
 	h.Ctx = ctx
 
-	if checkMaximunStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximunStorageError != nil {
+	if checkMaximumStorageError := handleCheckUserMaximumStorage(h.Ctx, h.DB); checkMaximumStorageError != nil {
 		c.AbortWithStatusJSON(
 			http.StatusInternalServerError,
 			utils.ReturnResponse(
 				c,
 				constant.CheckMaximunStorageError,
 				nil,
-				checkMaximunStorageError.Error(),
+				checkMaximumStorageError.Error(),
 			),
 		)
 		return
@@ -875,6 +875,19 @@ func (h StorageHandler) DownloadFile(c *gin.Context) {
 	fileNameToDownloadFromRequest := c.Query("fileNameToDownload")
 
 	if strings.Contains(folderLocation, "..") || strings.Contains(folderLocation, ".") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	if strings.Contains(fileNameToDownloadFromRequest, "..") || strings.Contains(fileNameToDownloadFromRequest, "/") {
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
 			utils.ReturnResponse(
@@ -1551,11 +1564,25 @@ func (h StorageHandler) ReadTextFileContent(c *gin.Context) {
 				c,
 				constant.DataFormatError,
 				nil,
-				"`locationToRead` and `fileNameToRead` can not be empty",
+				"`fileNameToRead` can not be empty",
 			),
 		)
 		return
 	}
+
+	if strings.Contains(fileNameToReadFromRequest, "..") || strings.Contains(fileNameToReadFromRequest, "/") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
 	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
@@ -1688,18 +1715,32 @@ func (h StorageHandler) EditTextFileContent(c *gin.Context) {
 	folderLocation := c.Query("locationToEdit")
 	credential := c.Query("credential")
 	fileNameToEditFromRequest := c.Query("fileNameToEdit")
-	if folderLocation == "" || fileNameToEditFromRequest == "" {
+	if fileNameToEditFromRequest == "" {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utils.ReturnResponse(
 				c,
 				constant.DataFormatError,
 				nil,
-				"`locationToEdit` and `fileNameToEdit` can not be empty",
+				"`fileNameToEdit` can not be empty",
 			),
 		)
 		return
 	}
+
+	if strings.Contains(fileNameToEditFromRequest, "..") || strings.Contains(fileNameToEditFromRequest, "/") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
 	systemRootFolder := log.GetSystemRootFolder()
 	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, folderLocation)
 	checkFolderCredentialError := handleCheckUserFolderSecurityActivities(h.Ctx, h.DB, folderToView, credential)
@@ -2294,6 +2335,73 @@ func (h StorageHandler) SearchFile(c *gin.Context) {
 				c,
 				constant.Success,
 				searchFileResultToReturnToClient,
+			),
+		)
+	}
+}
+
+func (h StorageHandler) ReadImageFile(c *gin.Context) {
+	ctx, isSuccess := utils.PrepareContext(c)
+	if !isSuccess {
+		return
+	}
+	h.Ctx = ctx
+	requestPayload := payload.ReadImageFileRequestBody{}
+	isParseRequestPayloadSuccess := utils.ReadGinContextToPayload(c, &requestPayload)
+	if !isParseRequestPayloadSuccess {
+		return
+	}
+
+	if strings.Contains(requestPayload.Request.ImageFileName, "..") || strings.Contains(requestPayload.Request.ImageFileName, "/") {
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			utils.ReturnResponse(
+				c,
+				constant.DataFormatError,
+				nil,
+				"Not accepted",
+			),
+		)
+		return
+	}
+
+	systemRootFolder := log.GetSystemRootFolder()
+	folderToView := handleProgressFolderToView(h.Ctx, systemRootFolder, requestPayload.Request.FolderLocation)
+	fullImagePath := filepath.Join(folderToView, requestPayload.Request.ImageFileName)
+
+	if decryptionError := utils.FileDecryption(h.Ctx, fullImagePath); decryptionError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.FileCryptoError,
+				nil,
+				fullImagePath+" has an error while downloading.",
+			),
+		)
+		return
+	}
+
+	if base64Data, convertedError := utils.ConvertImageIntoWebpBase64(fullImagePath); convertedError != nil {
+		c.AbortWithStatusJSON(
+			http.StatusInternalServerError,
+			utils.ReturnResponse(
+				c,
+				constant.ViewImageError,
+				nil,
+				"can not view image",
+			),
+		)
+		return
+	} else {
+		c.JSON(
+			http.StatusOK,
+			utils.ReturnResponse(
+				c,
+				constant.Success,
+				payload.ImageViewResponse{
+					Data: base64Data,
+				},
 			),
 		)
 	}

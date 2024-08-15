@@ -142,4 +142,11 @@ func StorageController(router *gin.Engine, db *gorm.DB) {
 		utils.ResponseLogger,
 		handler.SearchFile,
 		utils.ErrorHandler)
+
+	storageRouter.POST("/read_image_file",
+		utils.AuthenticationWithAuthorization([]string{}),
+		utils.RequestLogger,
+		utils.ResponseLogger,
+		handler.ReadImageFile,
+		utils.ErrorHandler)
 }

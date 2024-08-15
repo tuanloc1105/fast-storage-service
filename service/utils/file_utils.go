@@ -120,3 +120,18 @@ func ListAndFindFileInDirectory(ctx context.Context, path string, inputFileNameT
 	}
 	return result, nil
 }
+
+func ConvertImageIntoWebpBase64(imagePath string) (string, error) {
+	command := fmt.Sprintf(constant.PythonImageReaderCommand, imagePath)
+	if pythonConvertImageStdout, pythonConvertImageStderr, pythonConvertImageError := Shellout(context.Background(), command); pythonConvertImageError != nil || pythonConvertImageStderr != "" {
+		return "", errors.New(fmt.Sprint(pythonConvertImageError, pythonConvertImageStderr))
+	} else {
+		convertImageResultArray := strings.Split(pythonConvertImageStdout, "\n")
+		if convertImageResultArray[0] == "false" {
+			return "", errors.New("can not convert image or it is not an image")
+		} else {
+			base64Result := convertImageResultArray[1]
+			return base64Result, nil
+		}
+	}
+}

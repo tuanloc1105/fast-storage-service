@@ -30,6 +30,7 @@ const FileCryptoSecretKeyPath = "additional_source_code/secret.key"
 const PythonEncryptFileCommand = "python3.12 additional_source_code/python_encrypt.py '%s' '%s'"
 const PythonDecryptFileCommand = "python3.12 additional_source_code/python_decrypt.py '%s' '%s'"
 const PythonListAllFileCommand = "python3.12 additional_source_code/python_walk_through_every_file.py '%s'"
+const PythonImageReaderCommand = "python3.12 additional_source_code/python_image_reader.py '%s'"
 const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 const (
 	ContentTypeBinary    = "application/octet-stream"
@@ -211,5 +212,9 @@ var (
 	FileCryptoError = ErrorEnums{
 		ErrorCode:    1028,
 		ErrorMessage: "File can not encrypt or decrypt",
+	}
+	ViewImageError = ErrorEnums{
+		ErrorCode:    1029,
+		ErrorMessage: "Image can not view",
 	}
 )
