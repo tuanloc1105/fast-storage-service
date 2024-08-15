@@ -24,7 +24,7 @@ def main(file_path):
         buffered = io.BytesIO()
 
         # Save the image to the BytesIO object in WebP format
-        img.save(buffered, format="WEBP")
+        img.save(buffered, format="WEBP", optimize = True, quality = 10)
 
         # Get the byte data from the BytesIO object
         img_byte_data = buffered.getvalue()
