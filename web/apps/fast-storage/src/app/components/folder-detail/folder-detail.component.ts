@@ -2,12 +2,15 @@ import { CommonModule, JsonPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   OnInit,
   QueryList,
   ViewChildren,
   effect,
   inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { StorageService } from '@app/data-access';
 import {
   FileContentComponent,
   LockFolderComponent,
@@ -15,6 +18,7 @@ import {
   SearchComponent,
   UploadFileComponent,
 } from '@app/shared/components';
+import { AppearDirective } from '@app/shared/directives';
 import { Directory } from '@app/shared/model';
 import { ImageSrcPipe } from '@app/shared/pipe';
 import { LocalStorageJwtService } from '@app/shared/services';
@@ -33,15 +37,16 @@ import { BreadcrumbItemClickEvent, BreadcrumbModule } from 'primeng/breadcrumb';
 import { ButtonModule } from 'primeng/button';
 import { ContextMenuModule } from 'primeng/contextmenu';
 import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
+import { GalleriaModule } from 'primeng/galleria';
 import { IconFieldModule } from 'primeng/iconfield';
+import { Inplace, InplaceModule } from 'primeng/inplace';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
-import { Inplace, InplaceModule } from 'primeng/inplace';
-import { lastValueFrom } from 'rxjs';
-import { AppearDirective } from '@app/shared/directives';
+import { lastValueFrom, tap } from 'rxjs';
 
 @Component({
   selector: 'app-folder-detail',
@@ -63,6 +68,8 @@ import { AppearDirective } from '@app/shared/directives';
     TooltipModule,
     InplaceModule,
     AppearDirective,
+    GalleriaModule,
+    ProgressSpinnerModule,
   ],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
@@ -77,6 +84,8 @@ export class FolderDetailComponent implements OnInit {
   private readonly confirmationService = inject(ConfirmationService);
   private readonly localStorageJwtService = inject(LocalStorageJwtService);
   private readonly messageService = inject(MessageService);
+  private readonly storageService = inject(StorageService);
+  private readonly destroyRef = inject(DestroyRef);
 
   public home: MenuItem | undefined;
   public selectedDirectory: { directory: Directory; rowIndex: number } | null =
@@ -85,6 +94,27 @@ export class FolderDetailComponent implements OnInit {
 
   public tableContextMenu: MenuItem[] = [];
   public speedDialItems: MenuItem[] = [];
+
+  public viewImages = false;
+  public activeViewImageIndex = 0;
+  public responsiveOptions: { breakpoint: string; numVisible: number }[] = [
+    {
+      breakpoint: '1500px',
+      numVisible: 5,
+    },
+    {
+      breakpoint: '1024px',
+      numVisible: 3,
+    },
+    {
+      breakpoint: '768px',
+      numVisible: 2,
+    },
+    {
+      breakpoint: '560px',
+      numVisible: 1,
+    },
+  ];
 
   @ViewChildren(Inplace) inplaces!: QueryList<Inplace>;
 
@@ -205,7 +235,7 @@ export class FolderDetailComponent implements OnInit {
     });
   }
 
-  public retrieveDirectory(directory: Directory): void {
+  public retrieveDirectory(directory: Directory, rowIndex: number): void {
     if (directory.type === 'folder') {
       const newPath = this.storageStore.currentPath() + '/' + directory.name;
       patchState(this.storageStore, {
@@ -233,11 +263,23 @@ export class FolderDetailComponent implements OnInit {
         type: 'detailFolder',
       });
     } else {
-      this.selectedDirectory = { directory, rowIndex: 0 };
-      this.storageStore.readFileContent({
-        fileNameToRead: directory.name,
-        locationToRead: this.storageStore.currentPath(),
-      });
+      this.selectedDirectory = { directory, rowIndex };
+      if (directory.extension.toLowerCase().match(/(jpg|jpeg|png|gif)$/)) {
+        const imageIndex = this.storageStore
+          .imagesPool()
+          .findIndex((image) => image.title === directory.name);
+        this.activeViewImageIndex = imageIndex;
+        if (!this.isImageReady(directory.name)) {
+          this.retrieveImage(directory.name);
+        } else {
+          this.viewImages = true;
+        }
+      } else {
+        this.storageStore.readFileContent({
+          fileNameToRead: directory.name,
+          locationToRead: this.storageStore.currentPath(),
+        });
+      }
     }
   }
 
@@ -304,6 +346,51 @@ export class FolderDetailComponent implements OnInit {
         searchResults: [],
       });
     });
+  }
+
+  public onImageViewChange(index: number) {
+    const imageName = this.storageStore.imagesPool()[index].title;
+    if (!this.isImageReady(imageName)) {
+      this.retrieveImage(imageName);
+    }
+  }
+
+  private isImageReady(imageName: string): boolean {
+    return !!this.storageStore
+      .imagesPool()
+      .find((image) => image.title === imageName)?.itemImageSrc;
+  }
+
+  private retrieveImage(imageFileName: string): void {
+    patchState(this.storageStore, {
+      isLoading: true,
+    });
+    this.storageService
+      .showImage({
+        request: {
+          imageFileName,
+          folderLocation: this.storageStore.currentPath(),
+        },
+      })
+      .pipe(
+        tap((res) => {
+          patchState(this.storageStore, {
+            imagesPool: this.storageStore.imagesPool().map((image) => {
+              if (image.title === imageFileName) {
+                return {
+                  ...image,
+                  itemImageSrc: res.response.data,
+                };
+              }
+              return image;
+            }),
+            isLoading: false,
+          });
+          this.viewImages = true;
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   private lockFolder(): void {

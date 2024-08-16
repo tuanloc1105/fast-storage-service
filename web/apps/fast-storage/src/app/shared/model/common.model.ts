@@ -4,3 +4,10 @@ export interface CommonResponse<T> {
   trace: string;
   response: T;
 }
+
+export interface ImageViewer {
+  itemImageSrc: string;
+  thumbnailImageSrc: string;
+  alt: string;
+  title: string;
+}

@@ -98,7 +98,7 @@
       </ng-template>
       <ng-template pTemplate="body" let-directory let-rowIndex="rowIndex">
         <tr
-          (dblclick)="retrieveDirectory(directory)"
+          (dblclick)="retrieveDirectory(directory, rowIndex)"
           [pContextMenuRow]="{directory, rowIndex}"
         >
           <td>
@@ -176,3 +176,39 @@
   />
 </div>
 <p-contextMenu #cm [model]="tableContextMenu" />
+
+<p-galleria
+  [activeIndex]="activeViewImageIndex"
+  [value]="storageStore.imagesPool()"
+  [(visible)]="viewImages"
+  [responsiveOptions]="responsiveOptions"
+  [containerStyle]="{ 'max-width': '80%' }"
+  [circular]="true"
+  [fullScreen]="true"
+  [showIndicators]="true"
+  [showThumbnails]="false"
+  [showItemNavigators]="true"
+  (activeIndexChange)="onImageViewChange($event)"
+>
+  <ng-template pTemplate="item" let-item>
+    @if (!item.itemImageSrc) {
+    <p-progressSpinner
+      styleClass="w-8 h-8"
+      strokeWidth="8"
+      fill="var(--surface-ground)"
+      animationDuration=".5s"
+    />
+    } @else {
+    <img
+      [src]="'data:image/jpg;base64,' + item.itemImageSrc"
+      style="width: 100%; display: block"
+    />
+    }
+  </ng-template>
+  <ng-template pTemplate="caption" let-item>
+    <h4 style="margin-bottom: 0.5rem; color: #ffffff">
+      {{ item.title }}
+    </h4>
+    <p>{{ item.alt }}</p>
+  </ng-template>
+</p-galleria>

@@ -12,6 +12,7 @@ import {
   RemoveFileRequest,
   RenameRequest,
   SearchRequest,
+  ShowImageRequest,
   StorageStatus,
   UploadFileRequest,
 } from '@app/shared/model';
@@ -126,5 +127,14 @@ export class StorageService {
         locationToRead,
       },
     });
+  }
+
+  public showImage(
+    payload: ShowImageRequest
+  ): Observable<CommonResponse<{ data: string }>> {
+    return this.http.post<CommonResponse<{ data: string }>>(
+      '/storage/read_image_file',
+      payload
+    );
   }
 }

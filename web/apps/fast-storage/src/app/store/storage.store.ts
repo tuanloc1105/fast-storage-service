@@ -10,6 +10,7 @@ import {
   Directory,
   DownloadFileRequest,
   FolderProtectionRequest,
+  ImageViewer,
   ReadFileRequest,
   RemoveFileRequest,
   RenameRequest,
@@ -45,6 +46,7 @@ type StorageState = {
   searchResults: string[];
   hasFileRenamed: boolean;
   fileContent: string;
+  imagesPool: ImageViewer[];
 };
 
 const initialState: StorageState = {
@@ -63,6 +65,7 @@ const initialState: StorageState = {
   searchResults: [],
   hasFileRenamed: false,
   fileContent: '',
+  imagesPool: [],
 };
 
 export const StorageStore = signalStore(
@@ -161,7 +164,24 @@ export const StorageStore = signalStore(
                     if (payload.type === 'subMenu') {
                       patchState(store, { subMenuDirectory: res.response });
                     } else {
-                      patchState(store, { detailFolder: res.response });
+                      const imagesPool = res.response
+                        .filter((dir) =>
+                          dir.extension
+                            .toLowerCase()
+                            .match(/(jpg|jpeg|png|gif)$/)
+                        )
+                        .map((dir) => {
+                          return {
+                            itemImageSrc: '',
+                            thumbnailImageSrc: '',
+                            alt: dir.name,
+                            title: dir.name,
+                          };
+                        });
+                      patchState(store, {
+                        detailFolder: res.response,
+                        imagesPool,
+                      });
                     }
                   },
                   error: (err: HttpErrorResponse) => {
