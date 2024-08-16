@@ -39,6 +39,5 @@ def main(file_path):
 
 # Entry point of the script
 if __name__ == "__main__":
-    # Replace with the path to your image file
     file_path = sys.argv[1]
     main(file_path)
