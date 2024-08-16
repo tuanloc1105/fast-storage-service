@@ -75,3 +75,10 @@ export interface ReadFileRequest {
   fileNameToRead: string;
   locationToRead: string;
 }
+
+export interface ShowImageRequest {
+  request: {
+    folderLocation: string;
+    imageFileName: string;
+  };
+}
