@@ -150,6 +150,6 @@ try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_
 
 docker_remove_image_command="docker rmi ${images_name}:${images_tag}"
 print_message_and_command_with_out_execute "Removing built images" "${docker_remove_image_command}"
-try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; eval ${docker_remove_image_command}\""
+try_catch "ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no $ssh_user@$ssh_host -p $ssh_port \"cd ${target_dir} ; source ~/.bash_profile ; echo ${docker_remove_image_command} > docker_remove_image_command.txt ; eval ${docker_remove_image_command}\""
 
 print_message "Deployment process has been done"
