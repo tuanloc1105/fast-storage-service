@@ -38,7 +38,7 @@ export interface DownloadFileRequest {
 
 export interface RemoveFileRequest {
   request: {
-    fileNameToRemove: string;
+    fileNameToRemove: string[];
     locationToRemove: string;
     otpCredential?: string;
   };
@@ -80,5 +80,14 @@ export interface ShowImageRequest {
   request: {
     folderLocation: string;
     imageFileName: string;
+  };
+}
+
+export interface CutOrCopyRequest {
+  request: {
+    sourceFolder: string;
+    destinationFolder: string;
+    fileName: string;
+    isCopy: boolean;
   };
 }

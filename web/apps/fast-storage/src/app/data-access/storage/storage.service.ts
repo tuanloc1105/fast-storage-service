@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   CheckFolderProtectionRequest,
   CreateFolderRequest,
+  CutOrCopyRequest,
   Directory,
   DirectoryRequest,
   DownloadFileRequest,
@@ -136,5 +137,9 @@ export class StorageService {
       '/storage/read_image_file',
       payload
     );
+  }
+
+  public cutOrCopy(payload: CutOrCopyRequest): Observable<CommonResponse<any>> {
+    return this.http.post<CommonResponse<any>>('/storage/cut_or_copy', payload);
   }
 }

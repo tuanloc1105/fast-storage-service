@@ -23,7 +23,9 @@
         icon="pi pi-clipboard"
         [text]="true"
         size="small"
-        [disabled]="checkedDirectories.length === 0"
+        [disabled]="
+          checkedDirectories.length === 0 || (!isCutting && !isCopying)
+        "
         (click)="handlePaste()"
         title="Paste"
       ></p-button>
@@ -90,7 +92,7 @@
       <ng-template pTemplate="header">
         <tr>
           <th style="width: 4rem"><p-tableHeaderCheckbox /></th>
-          <th class="w-2/5">Name</th>
+          <th class="w-1/2">Name</th>
           <th>Type</th>
           <th>Size</th>
           <th>Date modified</th>
@@ -192,12 +194,7 @@
 >
   <ng-template pTemplate="item" let-item>
     @if (!item.itemImageSrc) {
-    <p-progressSpinner
-      styleClass="w-8 h-8"
-      strokeWidth="8"
-      fill="var(--surface-ground)"
-      animationDuration=".5s"
-    />
+    <p-skeleton width="50vw" height="50vh" />
     } @else {
     <img
       [src]="'data:image/jpg;base64,' + item.itemImageSrc"
