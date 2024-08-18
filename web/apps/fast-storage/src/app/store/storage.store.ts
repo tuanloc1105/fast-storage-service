@@ -7,6 +7,7 @@ import {
 } from '@app/shared/constant';
 import {
   CheckFolderProtectionRequest,
+  CutOrCopyRequest,
   Directory,
   DownloadFileRequest,
   FolderProtectionRequest,
@@ -39,6 +40,7 @@ type StorageState = {
   hasNewFile: boolean;
   hasFileRemoved: boolean;
   hasFileProtected: boolean;
+  hasFileCutOrCopied: boolean;
   breadcrumb: MenuItem[];
   detailFolder: Directory[];
   currentPath: string;
@@ -58,6 +60,7 @@ const initialState: StorageState = {
   hasNewFile: false,
   hasFileRemoved: false,
   hasFileProtected: false,
+  hasFileCutOrCopied: false,
   breadcrumb: [],
   detailFolder: [],
   currentPath: '',
@@ -387,6 +390,29 @@ export const StorageStore = signalStore(
               tapResponse({
                 next: (res) => {
                   patchState(store, { fileContent: res });
+                },
+                error: (err) => {
+                  console.log(err);
+                },
+                finalize: () => patchState(store, { isLoading: false }),
+              })
+            );
+          })
+        )
+      ),
+      cutOrCopy: rxMethod<CutOrCopyRequest>(
+        pipe(
+          switchMap((payload) => {
+            patchState(store, { isLoading: true, hasFileCutOrCopied: false });
+            return storageService.cutOrCopy(payload).pipe(
+              tapResponse({
+                next: () => {
+                  messageService.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'File/Folder copied successfully',
+                  });
+                  patchState(store, { hasFileCutOrCopied: true });
                 },
                 error: (err) => {
                   console.log(err);

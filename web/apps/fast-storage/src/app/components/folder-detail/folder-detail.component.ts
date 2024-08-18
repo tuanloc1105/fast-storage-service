@@ -42,10 +42,10 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { Inplace, InplaceModule } from 'primeng/inplace';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { SpeedDialModule } from 'primeng/speeddial';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
+import { SkeletonModule } from 'primeng/skeleton';
 import { lastValueFrom, tap } from 'rxjs';
 
 @Component({
@@ -69,7 +69,7 @@ import { lastValueFrom, tap } from 'rxjs';
     InplaceModule,
     AppearDirective,
     GalleriaModule,
-    ProgressSpinnerModule,
+    SkeletonModule,
   ],
   templateUrl: './folder-detail.component.html',
   styleUrl: './folder-detail.component.scss',
@@ -115,29 +115,54 @@ export class FolderDetailComponent implements OnInit {
       numVisible: 1,
     },
   ];
+  public isCutting = false;
+  public isCopying = false;
+  private sourceFolder = '';
 
   @ViewChildren(Inplace) inplaces!: QueryList<Inplace>;
 
   constructor() {
     effect(
       () => {
+        const {
+          hasNewFolder,
+          hasNewFile,
+          hasFileRemoved,
+          hasFileRenamed,
+          hasFileCutOrCopied,
+          getDetailsDirectory,
+          currentPath,
+          fileContent,
+        } = this.storageStore;
+
         if (
-          this.storageStore.hasNewFolder() ||
-          this.storageStore.hasNewFile() ||
-          this.storageStore.hasFileRemoved() ||
-          this.storageStore.hasFileRenamed()
+          hasNewFolder() ||
+          hasNewFile() ||
+          hasFileRemoved() ||
+          hasFileRenamed() ||
+          hasFileCutOrCopied()
         ) {
-          this.storageStore.getDetailsDirectory({
-            path: this.storageStore.currentPath(),
+          getDetailsDirectory({
+            path: currentPath(),
             type: 'detailFolder',
           });
         }
 
-        if (this.storageStore.fileContent()) {
+        if (hasFileRemoved()) {
+          this.checkedDirectories = [];
+          this.selectedDirectory = null;
+        }
+
+        if (hasFileCutOrCopied()) {
+          this.isCopying = false;
+          this.isCutting = false;
+        }
+
+        if (fileContent()) {
           const ref = this.dialogService.open(FileContentComponent, {
             header: this.selectedDirectory?.directory.name,
             data: {
-              content: this.storageStore.fileContent(),
+              content: fileContent(),
             },
             resizable: true,
             width: '50vw',
@@ -290,27 +315,27 @@ export class FolderDetailComponent implements OnInit {
   }
 
   public handleCopy() {
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'File(s) copied',
-    });
+    this.isCopying = true;
+    this.isCutting = false;
+    this.sourceFolder = this.storageStore.currentPath();
   }
 
   public handleCut() {
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'File(s) cut',
-    });
+    this.isCutting = true;
+    this.isCopying = false;
+    this.sourceFolder = this.storageStore.currentPath();
   }
 
   public handlePaste() {
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'File(s) pasted',
-    });
+    if (this.sourceFolder === this.storageStore.currentPath()) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Warning',
+        detail: 'Cannot paste file(s) to the same folder',
+      });
+      return;
+    }
+    this.handleCopyOrCut();
   }
 
   public handleRename() {
@@ -322,14 +347,7 @@ export class FolderDetailComponent implements OnInit {
   }
 
   public deleteFiles(event: Event): void {
-    this.confirmationService.confirm({
-      target: event.target as EventTarget,
-      message: 'Do you want to delete these file(s)?',
-      header: 'Delete Confirmation',
-      icon: 'pi pi-info-circle',
-      acceptButtonStyleClass: 'p-button-danger p-button-text',
-      rejectButtonStyleClass: 'p-button-text p-button-text',
-    });
+    this.removeFile({ originalEvent: event });
   }
 
   public handleSearch(): void {
@@ -443,9 +461,23 @@ export class FolderDetailComponent implements OnInit {
   }
 
   private removeFile(event: MenuItemCommandEvent): void {
+    const targetDirectories = this.getTargetDirectories();
+
+    let message = '';
+    if (targetDirectories && targetDirectories.length > 1) {
+      message = `Do you want to delete ${targetDirectories.length} files?`;
+    } else if (targetDirectories && targetDirectories.length === 1) {
+      const directory = targetDirectories[0];
+      message = `Do you want to delete ${
+        directory.type === 'folder'
+          ? `folder (${directory.name})`
+          : `file (${directory.name})`
+      }?`;
+    }
+
     this.confirmationService.confirm({
       target: event.originalEvent?.target as EventTarget,
-      message: 'Do you want to delete this?',
+      message,
       header: 'Delete Confirmation',
       icon: 'pi pi-info-circle',
       acceptButtonStyleClass: 'p-button-danger p-button-text',
@@ -453,11 +485,34 @@ export class FolderDetailComponent implements OnInit {
       accept: () => {
         this.storageStore.removeFile({
           request: {
-            fileNameToRemove: this.selectedDirectory?.directory.name ?? '',
+            fileNameToRemove:
+              this.getTargetDirectories()?.map((d) => d.name) ?? [],
             locationToRemove: this.storageStore.currentPath(),
           },
         });
       },
     });
+  }
+
+  private handleCopyOrCut() {
+    this.storageStore.cutOrCopy({
+      request: {
+        sourceFolder: this.sourceFolder,
+        destinationFolder: this.storageStore.currentPath(),
+        fileName: this.getTargetDirectories()[0].name ?? '',
+        isCopy: this.isCopying,
+      },
+    });
+  }
+
+  private getTargetDirectories() {
+    if (this.checkedDirectories.length > 1) {
+      return this.checkedDirectories;
+    } else if (this.checkedDirectories.length === 1) {
+      return [this.checkedDirectories[0]];
+    } else if (this.selectedDirectory?.directory) {
+      return [this.selectedDirectory.directory];
+    }
+    return [];
   }
 }
