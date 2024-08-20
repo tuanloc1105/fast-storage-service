@@ -14,6 +14,7 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { MessageService } from 'primeng/api';
 import { pipe, switchMap } from 'rxjs';
+import { StorageStore } from './storage.store';
 
 type AuthState = {
   isLoggedIn: boolean;
@@ -38,7 +39,8 @@ export const AuthStore = signalStore(
       router = inject(Router),
       authService = inject(AuthService),
       localStorageService = inject(LocalStorageJwtService),
-      messageService = inject(MessageService)
+      messageService = inject(MessageService),
+      storageStore = inject(StorageStore)
     ) => ({
       getUserInfo: rxMethod<void>(
         pipe(
@@ -48,7 +50,13 @@ export const AuthStore = signalStore(
               tapResponse({
                 next: (res) => {
                   patchState(store, { user: res.response, isLoggedIn: true });
-                  router.navigate(['app']);
+                  if (storageStore.currentPath()) {
+                    router.navigate(['app'], {
+                      queryParams: { path: storageStore.currentPath() },
+                    });
+                  } else {
+                    router.navigate(['app']);
+                  }
                 },
                 error: () =>
                   patchState(store, {
@@ -76,7 +84,13 @@ export const AuthStore = signalStore(
                     access_token: res.response.accessToken,
                     refresh_token: res.response.refreshToken,
                   });
-                  router.navigate(['app']);
+                  if (storageStore.currentPath()) {
+                    router.navigate(['app'], {
+                      queryParams: { path: storageStore.currentPath() },
+                    });
+                  } else {
+                    router.navigate(['app']);
+                  }
                 },
                 error: () => {
                   patchState(store, {

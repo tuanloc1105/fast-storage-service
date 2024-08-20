@@ -8,7 +8,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { lastValueFrom } from 'rxjs';
 import { LocalStorageJwtService } from './shared/services';
-import { AppStore } from './store';
+import { AppStore, StorageStore } from './store';
 
 @Component({
   standalone: true,
@@ -22,6 +22,7 @@ export class AppComponent implements OnInit {
   private readonly localStorageJwtService = inject(LocalStorageJwtService);
   private readonly router = inject(Router);
   private readonly appStore = inject(AppStore);
+  private readonly storageStore = inject(StorageStore);
 
   constructor(
     translate: TranslateService,
@@ -63,6 +64,12 @@ export class AppComponent implements OnInit {
     }
 
     if (accessToken) {
+      const queryString = window.location.search;
+      if (queryString.includes('path')) {
+        const path = new URLSearchParams(queryString).get('path') || '';
+        patchState(this.storageStore, { currentPath: path });
+      }
+
       this.router.navigate(['app/initializing']);
     }
   }
