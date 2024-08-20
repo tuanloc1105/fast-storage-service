@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthStore } from '@app/store';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -29,6 +29,14 @@ import { PasswordModule } from 'primeng/password';
 })
 export class LoginComponent {
   public authStore = inject(AuthStore);
+  private readonly activatedRoute = inject(ActivatedRoute);
+
+  constructor() {
+    console.log(this.activatedRoute.snapshot.params);
+    this.activatedRoute.paramMap.subscribe((paramMap) => {
+      console.log(paramMap);
+    });
+  }
 
   public request = {
     username: '',

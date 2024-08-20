@@ -47,6 +47,7 @@ import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { SkeletonModule } from 'primeng/skeleton';
 import { lastValueFrom, tap } from 'rxjs';
+import { genBreadcrumb } from '@app/shared/utils';
 
 @Component({
   selector: 'app-folder-detail',
@@ -146,6 +147,7 @@ export class FolderDetailComponent implements OnInit {
             path: currentPath(),
             type: 'detailFolder',
           });
+          this.storageStore.getSystemStorageStatus();
         }
 
         if (hasFileRemoved()) {
@@ -233,7 +235,14 @@ export class FolderDetailComponent implements OnInit {
       },
     ];
 
-    this.storageStore.getDetailsDirectory({ path: '', type: 'detailFolder' });
+    this.storageStore.getDetailsDirectory({
+      path: this.storageStore.currentPath(),
+      type: 'detailFolder',
+    });
+    genBreadcrumb(
+      this.storageStore,
+      this.storageStore.currentPath().split('/')
+    );
   }
 
   public handleBreadcrumb(event: BreadcrumbItemClickEvent): void {

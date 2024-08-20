@@ -6,6 +6,7 @@ import {
   SidebarComponent,
 } from '@app/components';
 import { BannerComponent, LockFolderComponent } from '@app/shared/components';
+import { RouteParamsService } from '@app/shared/services';
 import { BannerStore, StorageStore } from '@app/store';
 import { DialogService } from 'primeng/dynamicdialog';
 
@@ -38,6 +39,7 @@ export class LayoutComponent implements OnInit {
 
   private readonly storageStore = inject(StorageStore);
   private readonly dialogService = inject(DialogService);
+  private readonly routeParamsService = inject(RouteParamsService);
 
   ngOnInit(): void {
     this.storageStore.getSystemStorageStatus();
@@ -52,6 +54,11 @@ export class LayoutComponent implements OnInit {
             data: {
               unlockFolder: true,
             },
+          });
+        }
+        if (this.storageStore.currentPath()) {
+          this.routeParamsService.setRouteParams({
+            path: this.storageStore.currentPath(),
           });
         }
         this.showBanner();
