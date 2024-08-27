@@ -1,4 +1,4 @@
-FROM tuanloc/my_ubuntu:oracle
+FROM tuanloc/my_ubuntu:local
 
 EXPOSE 8080
 
